@@ -70,7 +70,8 @@ def test_version_format():
     assert len(parts) == 3 and all(p.isdigit() for p in parts)
 
 
-@pytest.mark.parametrize("page", ["views/schedule.py", "views/settings.py"])
+@pytest.mark.parametrize("page", ["views/schedule.py", "views/settings.py", "views/goals.py", "views/habits.py",
+                                  "views/skills.py", "views/looks.py", "views/studio.py", "views/review.py"])
 def test_other_pages_render(page):
     from core.auth import remember_token
 
@@ -98,3 +99,25 @@ def test_add_task_and_propose(tmp_path):
     assert not at.exception, at.exception
     labels = [b.label for b in at.button]
     assert "Nhận" in labels or any("Chưa xếp được" in w.value for w in at.warning)
+
+
+def test_today_top3_and_habit(tmp_path):
+    from core.auth import remember_token
+    from core.store import LocalStore, latest
+
+    at = _app()
+    at.query_params["k"] = remember_token("pw")
+    at.run()
+    # Top 3
+    at.text_input(key="t3t0").input("Gọi 3 khách cũ")
+    at.checkbox(key="t3d0").check()
+    next(b for b in at.button if b.label == "Lưu Top 3").click().run()
+    assert not at.exception, at.exception
+    daily = latest(LocalStore(tmp_path).read("daily"))
+    assert daily[0]["top3"][0] == {"text": "Gọi 3 khách cũ", "done": True}
+    # thói quen
+    cb = next(c for c in at.checkbox if c.key and c.key.startswith("hb_"))
+    cb.check().run()
+    assert not at.exception, at.exception
+    logs = latest(LocalStore(tmp_path).read("habit_log"))
+    assert logs and logs[0]["done"] is True

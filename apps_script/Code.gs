@@ -11,11 +11,13 @@
  * Mỗi tab = 1 bảng, 4 cột: key | ts | deleted | data (JSON). Chỉ ghi nối dòng.
  */
 const TZ = 'Asia/Ho_Chi_Minh';
+// Mã bí mật: ưu tiên Thuộc tính tập lệnh TOKEN; nếu không có thì dùng hằng số dưới (chỉ điền trong bản trên Apps Script, KHÔNG đẩy lên GitHub).
+const FALLBACK_TOKEN = '';
 
 function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents || '{}');
-    const token = PropertiesService.getScriptProperties().getProperty('TOKEN');
+    const token = PropertiesService.getScriptProperties().getProperty('TOKEN') || FALLBACK_TOKEN;
     if (!token || req.token !== token) return out({ ok: false, error: 'unauthorized' });
 
     switch (req.action) {

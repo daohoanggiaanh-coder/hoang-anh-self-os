@@ -18,3 +18,22 @@ def test_latest_tolerates_bad_rows():
 def test_deleted_flag_from_sheet_variants():
     rows = [{"key": "x", "ts": "1", "deleted": "1", "data": "{}"}]
     assert latest(rows) == []
+
+
+def test_edit_table_merge_keeps_hidden_fields(tmp_path, monkeypatch):
+    """Sửa 1 dòng trong bảng không được làm mất trường ẩn (VD 'order', 'icon')."""
+    import pandas as pd
+    import core.editors as E
+
+    saved = {}
+    monkeypatch.setattr(E.db, "put", lambda name, recs: saved.setdefault("put", recs))
+    monkeypatch.setattr(E.db, "delete", lambda name, keys: saved.setdefault("del", keys))
+    monkeypatch.setattr(E.st, "data_editor", lambda df, **kw: df.assign(name=["Mới"]))
+    monkeypatch.setattr(E.st, "button", lambda *a, **k: True)
+    monkeypatch.setattr(E.st, "rerun", lambda: None)
+    monkeypatch.setattr(E.st, "session_state", {})
+    recs = [{"key": "a", "name": "Cũ", "icon": "📖", "order": 3}]
+    ident = lambda v: v  # noqa: E731
+    E.edit_table("habits", recs, {"name": (None, ident, ident)}, ["name"], "w", defaults={"active": True})
+    assert saved["put"] == [{"key": "a", "name": "Mới", "icon": "📖", "order": 3}]
+    assert "del" not in saved

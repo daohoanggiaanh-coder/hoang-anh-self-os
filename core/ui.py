@@ -78,7 +78,12 @@ h1, h2, h3 {{ letter-spacing: -.01em; }}
 .so-warn {{ border:1px solid rgba(201,164,92,.45); background: var(--goldbg); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; font-size: .9rem; }}
 .so-muted {{ color: var(--muted); font-size: .85rem; }}
 .so-soon {{ color: var(--muted); font-size: .85rem; font-style: italic; }}
-.stPageLink a {{ justify-content:center; border:1px solid var(--line); border-radius:999px; padding:2px 6px; }}
+.st-key-so_nav .stPageLink a {{ justify-content:center; border:1px solid var(--line); border-radius:999px; padding:0 10px; }}
+.st-key-so_nav .stPageLink p {{ font-size:.82rem; }}
+.so-bar {{ height:8px; border-radius:99px; background: var(--line); overflow:hidden; }}
+.so-bar > div {{ height:100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); }}
+.so-badge {{ display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:12px; border:1px solid var(--line); margin:0 6px 6px 0; font-size:.85rem; }}
+.so-badge.off {{ opacity:.35; filter: grayscale(1); }}
 .so-ver {{ color: var(--muted); font-size: .72rem; letter-spacing: .08em; }}
 .stButton > button[kind="primary"] {{ color: #0B0B0C; font-weight: 600; }}
 @media (max-width: 640px) {{
@@ -115,15 +120,21 @@ def inject_head():
 NAV = [
     ("views/today.py", "Hôm nay", ":material/wb_sunny:"),
     ("views/schedule.py", "Lịch", ":material/calendar_month:"),
+    ("views/goals.py", "Mục tiêu", ":material/flag:"),
+    ("views/habits.py", "Thói quen", ":material/local_fire_department:"),
+    ("views/skills.py", "Kỹ năng", ":material/school:"),
+    ("views/looks.py", "Vẻ ngoài", ":material/styler:"),
+    ("views/studio.py", "Studio", ":material/storefront:"),
+    ("views/review.py", "Tổng kết", ":material/insights:"),
     ("views/settings.py", "Cài đặt", ":material/tune:"),
 ]
 
 
 def nav_row():
     """Thanh chuyển trang luôn hiện (điện thoại không phải mở menu)."""
-    with st.container(horizontal=True, wrap=False, gap="small"):
+    with st.container(horizontal=True, wrap=True, gap="small", key="so_nav"):
         for path, label, icon in NAV:
-            st.page_link(path, label=label, icon=icon, width="stretch")
+            st.page_link(path, label=label, icon=icon)
 
 
 def header(eyebrow: str, title: str, sub: str = ""):
@@ -177,3 +188,15 @@ def timeline_html(items: list[Item], slots: list[tuple[int, int]], now_min: int 
     if not out:
         return '<div class="so-muted">Chưa có gì trong ngày.</div>'
     return '<div class="so-tl">' + "".join(out) + "</div>"
+
+
+def bar_html(pct: float | None, label: str = "") -> str:
+    p = 0 if pct is None else max(0.0, min(1.0, pct))
+    lab = f'<div class="so-muted" style="margin-bottom:4px">{html.escape(label)}</div>' if label else ""
+    return f'{lab}<div class="so-bar"><div style="width:{p * 100:.0f}%"></div></div>'
+
+
+def flash():
+    msg = st.session_state.pop("_flash", None)
+    if msg:
+        st.success(msg)

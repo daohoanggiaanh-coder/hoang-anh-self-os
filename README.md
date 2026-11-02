@@ -3,13 +3,17 @@
 Web app cá nhân để học, làm, theo dõi và phát triển bản thân mỗi ngày.
 Streamlit + Google Sheets (qua Apps Script) + Google Calendar.
 
-## Đã có (phiên bản 0.1.0)
-- Đăng nhập 1 tài khoản, ghi nhớ đăng nhập (cookie 180 ngày + dự phòng `?k=`).
-- Giao diện đen – vàng đồng / kem – vàng đồng, font Be Vietnam Pro, gọn trên điện thoại, có icon + manifest.
-- **Hôm nay của tôi**: lịch hôm nay, giờ trống còn lại, khoảng trống kế tiếp, nhắc nhẹ.
-- **Lịch & giờ trống**: lịch cố định, ca PT đọc từ lịch Google "PT" (+15' đi lại), việc phát sinh,
-  tìm giờ trống ≥ 30', đề xuất xếp khối theo năng lượng (đệm 15'), Nhận / Đổi / Bỏ, cảnh báo trùng giờ, thiếu ngủ, quá tải.
-- **Cài đặt**: giờ năng lượng, quy tắc xếp, ngưỡng nhắc, tên lịch Google.
+## Chức năng (phiên bản 0.2.0)
+1. **Lịch & giờ trống** — lịch cố định, ca PT từ lịch Google "PT" (+15' đi lại), tìm giờ trống ≥ 30', đề xuất xếp khối theo năng lượng (đệm 15'), Nhận/Đổi/Bỏ, cảnh báo trùng giờ/thiếu ngủ/quá tải.
+2. **Mục tiêu** Năm → Quý → Tuần (OKR) + **Top 3** mỗi ngày và 3 câu tổng kết.
+3. **Thói quen** — chuỗi ngày, điểm, cấp độ, biểu đồ.
+4. **Kỹ năng** — giờ/tuần, tài liệu, nhật ký học, thực hành; tự chèn giờ học vào lịch.
+5. **Vẻ ngoài** — checklist, số đo, ảnh tiến độ 4 tuần, tóc, tủ đồ.
+6. **Studio** — lộ trình theo quý, ngân sách, hoà vốn, bảng điều hành.
+7. **Tổng kết** tuần/tháng với nhận xét & đề xuất.
+8. **Động lực** — điểm, cấp độ, huy hiệu, nhắc nhẹ không phạt.
+
+Đăng nhập 1 tài khoản (ghi nhớ đăng nhập), giao diện đen – vàng đồng sáng/tối, font Be Vietnam Pro, cài được như app.
 
 ## Chạy thử trên máy
 ```bash

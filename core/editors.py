@@ -78,17 +78,20 @@ def edit_table(
                 if any(not _blank(v) for v in rec.values()):
                     errors += 1
                 continue
-            for k, v in (defaults or {}).items():
-                if _blank(rec.get(k)):
-                    rec[k] = v
             k = row.get("key")
             if _blank(k):
+                for dk, dv in (defaults or {}).items():
+                    if _blank(rec.get(dk)):
+                        rec[dk] = dv
                 upserts.append(rec)
             else:
                 seen.add(k)
-                old = {f: orig.get(k, {}).get(f) for f in fields}
+                base = orig.get(k, {})
+                old = {f: base.get(f) for f in fields}
                 if old != rec:
-                    upserts.append({"key": k, **rec})
+                    merged = {**base, **rec}  # giữ các trường không hiện trong bảng
+                    merged["key"] = k
+                    upserts.append(merged)
         removed = [k for k in orig if k not in seen]
         if upserts:
             db.put(name, upserts)

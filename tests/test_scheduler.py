@@ -144,3 +144,15 @@ def test_clash_detected():
     items[MON].append(Item(330, 360, "PT sớm", "PT", "pt"))
     res = S.analyze_week(days, items, DEFAULT_SETTINGS)
     assert res["clashes"] and any("Trùng giờ" in w for w in res["warnings"])
+
+
+def test_skill_tasks_remaining():
+    from core.week import skill_tasks
+
+    days = S.week_days(MON)
+    skills = [{"key": "en", "name": "Tiếng Anh", "hours_week": 2.5}, {"key": "x", "name": "X", "hours_week": 0}]
+    learn = [{"date": "2026-11-03", "skill": "en", "minutes": 30}]
+    blocks = [{"date": "2026-11-04", "start": "10:00", "end": "11:00", "task_key": "skill:en:2026-11-02:0"}]
+    tasks = skill_tasks(skills, blocks, learn, days)
+    assert [t["minutes"] for t in tasks] == [60]   # 150 - 30 - 60 = 60
+    assert tasks[0]["kind"] == "Học" and tasks[0]["title"] == "Học: Tiếng Anh"

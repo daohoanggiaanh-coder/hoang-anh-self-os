@@ -6,7 +6,7 @@ from core import db
 from core import scheduler as S
 from core import ui
 from core.editors import edit_table, from_date, from_time, to_date, to_time
-from core.week import load_week
+from core.week import load_week, skill_tasks
 
 cc = st.column_config
 now = ui.now_vn()
@@ -99,12 +99,16 @@ with tab_prop:
         f"đệm {wk.settings['buffer_min']} phút giữa các khối. Đang chờ xếp: <b>{len(pending)}</b> việc.</div>",
         unsafe_allow_html=True,
     )
-    if st.button("✦ Tạo đề xuất cho tuần", type="primary", disabled=not pending):
-        props, unplaced = S.propose(days, wk.items, pending, wk.settings, now=now)
+    with_skills = st.toggle("Tự chèn giờ học kỹ năng còn thiếu trong tuần", value=True)
+    sk_tasks = skill_tasks(db.skills(), wk.blocks, db.table("learn_log"), days) if with_skills else []
+    if sk_tasks:
+        st.caption(f"Giờ học còn thiếu tuần này: {len(sk_tasks)} buổi · {S.fmt_dur(sum(t['minutes'] for t in sk_tasks))}")
+    if st.button("✦ Tạo đề xuất cho tuần", type="primary", disabled=not (pending or sk_tasks)):
+        props, unplaced = S.propose(days, wk.items, pending + sk_tasks, wk.settings, now=now)
         st.session_state[_proposals_key()] = {"props": [p.to_dict() for p in props], "unplaced": unplaced}
         st.rerun()
-    if not pending:
-        st.info("Chưa có việc nào chờ xếp. Anh thêm việc ở tab **Việc cần xếp**.")
+    if not pending and not sk_tasks:
+        st.info("Chưa có việc nào chờ xếp. Anh thêm việc ở tab **Việc cần xếp** hoặc đặt giờ học ở trang **Kỹ năng**.")
 
     data = st.session_state.get(_proposals_key())
     if data:

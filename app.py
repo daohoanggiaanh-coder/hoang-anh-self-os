@@ -40,9 +40,5 @@ if not auth.is_logged_in():
     st.navigation([st.Page(login_page, title="Đăng nhập", icon="🔐")], position="hidden").run()
 else:
     auth.apply_pending_cookie()
-    pages = [
-        st.Page("views/today.py", title="Hôm nay", icon=":material/wb_sunny:", default=True),
-        st.Page("views/schedule.py", title="Lịch & giờ trống", icon=":material/calendar_month:"),
-        st.Page("views/settings.py", title="Cài đặt", icon=":material/tune:"),
-    ]
+    pages = [st.Page(path, title=label, icon=icon, default=(i == 0)) for i, (path, label, icon) in enumerate(ui.NAV)]
     st.navigation(pages, position="hidden").run()  # dùng thanh chuyển trang riêng (ui.nav_row)

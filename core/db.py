@@ -124,3 +124,49 @@ def invalidate_calendar():
     c = _cache()
     for k in [k for k in c if k.startswith("_gcal:")]:
         c.pop(k)
+
+
+# ------------------------------------------------------------- dữ liệu khởi tạo các phần 2–8
+def _seed_once(flag: str, table_name: str, records: list[dict]):
+    if not any(r.get("key") == f"seeded_{flag}" for r in table("settings")):
+        if not table(table_name):
+            put(table_name, records)
+        put("settings", [{"key": f"seeded_{flag}", "done": True}])
+
+
+def habits() -> list[dict]:
+    from core.progress import DEFAULT_HABITS
+
+    _seed_once("habits", "habits", [{**h, "active": True, "order": i} for i, h in enumerate(DEFAULT_HABITS)])
+    return sorted(table("habits"), key=lambda h: (h.get("order", 99), h.get("name", "")))
+
+
+def skills() -> list[dict]:
+    from core.progress import DEFAULT_SKILLS
+
+    _seed_once("skills", "skills", [{"name": n, "hours_week": 1.0, "resources": "", "practice": "", "order": i}
+                                    for i, n in enumerate(DEFAULT_SKILLS)])
+    return sorted(table("skills"), key=lambda s: (s.get("order", 99), s.get("name", "")))
+
+
+def studio_tasks() -> list[dict]:
+    from core.studio import STUDIO_CHECKLIST
+
+    _seed_once("studio", "studio_tasks", [{"quarter": q, "area": a, "task": t, "done": False, "order": i}
+                                          for i, (q, a, t) in enumerate(STUDIO_CHECKLIST)])
+    return sorted(table("studio_tasks"), key=lambda r: (r.get("quarter", "Q9"), r.get("order", 999)))
+
+
+def daily(day: str) -> dict:
+    rec = next((r for r in table("daily") if r["key"] == day), None)
+    return rec or {"key": day, "top3": [{"text": "", "done": False} for _ in range(3)], "review": ["", "", ""]}
+
+
+def progress_data():
+    from core.progress import Data
+
+    return Data(
+        daily=table("daily"), habits=habits(), habit_log=table("habit_log"), skills=skills(),
+        learn_log=table("learn_log"), body=table("body"), look_log=table("look_log"),
+        studio_tasks=studio_tasks(), goals=table("goals"),
+    )
