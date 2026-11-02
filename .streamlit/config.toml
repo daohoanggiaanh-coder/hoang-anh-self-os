@@ -1,0 +1,57 @@
+[server]
+enableStaticServing = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+
+[theme]
+font = "Be Vietnam Pro, sans-serif"
+headingFont = "Be Vietnam Pro, sans-serif"
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+baseRadius = "10px"
+primaryColor = "#C9A45C"
+
+[[theme.fontFaces]]
+family = "Be Vietnam Pro"
+url = "app/static/BeVietnamPro-Regular.ttf"
+weight = "400"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Be Vietnam Pro"
+url = "app/static/BeVietnamPro-Medium.ttf"
+weight = "500"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Be Vietnam Pro"
+url = "app/static/BeVietnamPro-SemiBold.ttf"
+weight = "600"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Be Vietnam Pro"
+url = "app/static/BeVietnamPro-Bold.ttf"
+weight = "700"
+style = "normal"
+
+# Tối: đen – vàng đồng (mặc định khi điện thoại để chế độ tối)
+[theme.dark]
+primaryColor = "#C9A45C"
+backgroundColor = "#0B0B0C"
+secondaryBackgroundColor = "#17171A"
+textColor = "#EDE6D6"
+borderColor = "#2A2620"
+linkColor = "#E3C88A"
+
+# Sáng: kem – vàng đồng đậm
+[theme.light]
+primaryColor = "#9C7631"
+backgroundColor = "#F7F4EE"
+secondaryBackgroundColor = "#EDE7DB"
+textColor = "#1A1814"
+borderColor = "#DCD3C2"
+linkColor = "#8A6526"
