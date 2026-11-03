@@ -121,3 +121,31 @@ def test_today_top3_and_habit(tmp_path):
     assert not at.exception, at.exception
     logs = latest(LocalStore(tmp_path).read("habit_log"))
     assert logs and logs[0]["done"] is True
+
+
+def test_few_backend_reads_per_page(monkeypatch):
+    """Mỗi trang chỉ nên gọi backend đọc rất ít lần (Apps Script mỗi lần ~1–2 giây)."""
+    from core.auth import remember_token
+    from core.store import LocalStore
+
+    calls = {"read": 0, "read_many": 0}
+    orig_read, orig_many = LocalStore.read, LocalStore.read_many
+
+    def read(self, t):
+        calls["read"] += 1
+        return orig_read(self, t)
+
+    def read_many(self, ts):
+        calls["read_many"] += 1
+        return {t: orig_read(self, t) for t in ts}
+
+    monkeypatch.setattr(LocalStore, "read", read)
+    monkeypatch.setattr(LocalStore, "read_many", read_many)
+    at = _app()
+    at.query_params["k"] = remember_token("pw")
+    at.run()
+    assert not at.exception, at.exception
+    assert calls["read_many"] <= 2, calls
+    calls.update(read=0, read_many=0)
+    at.switch_page("views/review.py").run()
+    assert calls["read_many"] == 0, calls  # đã có trong bộ đệm

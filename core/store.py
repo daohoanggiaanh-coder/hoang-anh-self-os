@@ -87,6 +87,9 @@ class LocalStore:
                 rows.append(json.loads(line))
         return rows
 
+    def read_many(self, tables: list[str]) -> dict[str, list[dict]]:
+        return {t: self.read(t) for t in tables}
+
     def append(self, table: str, rows: list[dict]) -> None:
         if not rows:
             return
@@ -139,6 +142,12 @@ class AppsScriptStore:
 
     def read(self, table: str) -> list[dict]:
         return self._call({"action": "read", "table": table}).get("rows", [])
+
+    def read_many(self, tables: list[str]) -> dict[str, list[dict]]:
+        out = self._call({"action": "read_many", "tables": tables})
+        if "tables" not in out:  # Apps Script bản cũ chưa có read_many
+            return {t: self.read(t) for t in tables}
+        return {t: out["tables"].get(t, []) for t in tables}
 
     def append(self, table: str, rows: list[dict]) -> None:
         if rows:

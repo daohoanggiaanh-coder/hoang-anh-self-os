@@ -1,5 +1,10 @@
 # Nhật ký phiên bản
 
+## 0.2.1 — 03/11/2026
+- Tăng tốc: đọc gộp mọi bảng trong 1 lần gọi Apps Script (`read_many`), ghi xong cập nhật bộ đệm tại chỗ thay vì đọc lại.
+  Trước đây mỗi trang gọi Google ~20 lần nối tiếp (rất chậm trên Streamlit Cloud).
+- Test: giới hạn số lần đọc backend mỗi trang.
+
 ## 0.2.0 — 02/11/2026
 - Mục tiêu Năm → Quý → Tuần (OKR) + lịch sử Top 3.
 - Hôm nay: Top 3, thói quen, giờ học (đánh dấu “Đã học” từ khối lịch), động lực, tổng kết 3 câu, nhắc nhẹ.

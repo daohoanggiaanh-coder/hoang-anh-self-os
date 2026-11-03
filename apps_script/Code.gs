@@ -23,6 +23,7 @@ function doPost(e) {
     switch (req.action) {
       case 'ping': return out({ ok: true, now: new Date().toISOString() });
       case 'read': return out({ ok: true, rows: readTable(req.table) });
+      case 'read_many': return out({ ok: true, tables: readMany(req.tables || []) });
       case 'append': return out({ ok: true, n: appendRows(req.table, req.rows || []) });
       case 'calendar': return out({ ok: true, events: listEvents(req.calendar || 'PT', req.start, req.end) });
       case 'calendar_create': return out({ ok: true, id: createEvent(req.event || {}) });
@@ -63,6 +64,21 @@ function readTable(table) {
   return sh.getRange(2, 1, last - 1, 4).getDisplayValues().map(function (r) {
     return { key: r[0], ts: r[1], deleted: r[2] === '1', data: r[3] };
   });
+}
+
+/** Đọc nhiều bảng trong 1 lần gọi (nhanh hơn nhiều so với gọi từng bảng). Bảng chưa có → []. */
+function readMany(tables) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const res = {};
+  tables.forEach(function (t) {
+    const name = String(t || '').replace(/[^A-Za-z0-9_]/g, '');
+    const sh = name && ss.getSheetByName(name);
+    if (!sh || sh.getLastRow() < 2) { res[name] = []; return; }
+    res[name] = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getDisplayValues().map(function (r) {
+      return { key: r[0], ts: r[1], deleted: r[2] === '1', data: r[3] };
+    });
+  });
+  return res;
 }
 
 function appendRows(table, rows) {

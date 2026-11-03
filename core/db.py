@@ -35,30 +35,58 @@ def is_local() -> bool:
     return isinstance(store(), LocalStore)
 
 
+TABLES = [
+    "settings", "fixed", "events", "blocks", "tasks", "daily", "habits", "habit_log", "skills", "learn_log",
+    "body", "look_items", "look_log", "photos", "wardrobe", "studio_tasks", "studio_budget", "studio_monthly", "goals",
+]
+LIGHT_TABLES = [t for t in TABLES if t != "photos"]  # ảnh nặng → chỉ tải khi mở trang Vẻ ngoài
+
+
 def _cache() -> dict:
     return st.session_state.setdefault("_db_cache", {})
 
 
-def table(name: str) -> list[dict]:
-    c = _cache()
-    hit = c.get(name)
-    if hit and time.time() - hit[0] < CACHE_TTL:
-        return hit[1]
+def _raw() -> dict:
+    """Bộ nhớ đệm dòng thô theo bảng: {table: (thời điểm tải, [rows])}."""
+    return st.session_state.setdefault("_db_raw", {})
+
+
+def _prefetch(names: list[str]):
+    raw = _raw()
     try:
-        recs = latest(store().read(name))
+        got = store().read_many(names)
     except StoreError as e:
         st.error(str(e))
-        recs = hit[1] if hit else []
-    c[name] = (time.time(), recs)
-    return recs
+        got = {n: raw.get(n, (0, []))[1] for n in names}
+    t = time.time()
+    for n in names:
+        raw[n] = (t, got.get(n, []))
+
+
+def table(name: str) -> list[dict]:
+    raw = _raw()
+    hit = raw.get(name)
+    if not hit or time.time() - hit[0] >= CACHE_TTL:
+        # tải gộp mọi bảng nhẹ đã hết hạn trong 1 lần gọi
+        names = [n for n in LIGHT_TABLES if not raw.get(n) or time.time() - raw[n][0] >= CACHE_TTL]
+        if name not in names:
+            names.append(name)
+        _prefetch(names)
+    return latest(raw[name][1])
 
 
 def invalidate(name: str | None = None):
-    c = _cache()
+    raw = _raw()
     if name is None:
-        c.clear()
+        raw.clear()
     else:
-        c.pop(name, None)
+        raw.pop(name, None)
+
+
+def _append_local(name: str, rows: list[dict]):
+    raw = _raw()
+    if name in raw:
+        raw[name] = (raw[name][0], raw[name][1] + rows)
 
 
 def put(name: str, records: list[dict]) -> list[str]:
@@ -70,13 +98,14 @@ def put(name: str, records: list[dict]) -> list[str]:
         rows.append(make_row(k, r))
         keys.append(k)
     store().append(name, rows)
-    invalidate(name)
+    _append_local(name, rows)  # ghi xong cập nhật luôn bộ đệm, không phải đọc lại
     return keys
 
 
 def delete(name: str, keys: list[str]):
-    store().append(name, [make_row(k, None, deleted=True) for k in keys])
-    invalidate(name)
+    rows = [make_row(k, None, deleted=True) for k in keys]
+    store().append(name, rows)
+    _append_local(name, rows)
 
 
 # ------------------------------------------------------------- cài đặt
