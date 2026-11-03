@@ -40,6 +40,11 @@ with st.form("settings"):
 
     st.markdown("##### Google Calendar")
     cal = st.text_input("Tên lịch chứa ca PT", s.get("pt_calendar", "PT"))
+    c1, c2 = st.columns([3, 2])
+    atlas_cal = c1.text_input("Lịch Atlas (lễ tân nhập) — ID lịch", s.get("atlas_calendar", ""),
+                              help="Để trống nếu không dùng. Lịch này có ca của cả team nên chỉ lấy ca đúng màu bên phải.")
+    atlas_color = c2.selectbox("Chỉ lấy ca màu", list(S.GCAL_COLOR_NAMES), index=list(S.GCAL_COLOR_NAMES).index(str(s.get("atlas_color", "11"))),
+                               format_func=lambda k: f"{k} · {S.GCAL_COLOR_NAMES[k]}")
     read_primary = st.toggle("Đọc cả lịch chính (mọi sự kiện trên lịch chính tính là giờ bận, có cộng giờ đi lại)",
                              bool(s.get("read_primary", True)))
     write_gcal = st.toggle("Khi bấm “Nhận” đề xuất → tạo sự kiện riêng tư trên lịch chính", bool(s.get("write_gcal", True)))
@@ -53,12 +58,38 @@ with st.form("settings"):
                 "buffer_min": int(buffer_min), "commute_min": int(commute), "min_slot": int(min_slot),
                 "max_deep_min": int(max_deep), "sleep_target_min": int(round(sleep_t * 60)),
                 "work_week_limit_h": int(work_lim), "pt_calendar": cal.strip() or "PT", "write_gcal": bool(write_gcal),
-                "read_primary": bool(read_primary),
+                "read_primary": bool(read_primary), "atlas_calendar": atlas_cal.strip(), "atlas_color": atlas_color,
             }
         )
         db.invalidate_calendar()
         st.session_state["_flash"] = "Đã lưu cài đặt."
         st.rerun()
+
+st.markdown("##### Phân loại & màu lịch Google")
+st.html(ui.legend_html())
+st.markdown(
+    "<div class='so-muted'>Web tự phân loại từng sự kiện trên Google Calendar theo các quy tắc dưới (từ trên xuống, khớp quy tắc nào trước "
+    "thì lấy loại đó). Sự kiện trong lịch <b>PT</b> luôn là <b>Dạy PT</b>. Không khớp quy tắc nào → <b>Khác</b> (không cộng giờ đi lại). "
+    "<br>• <b>Từ khoá</b>: tên sự kiện có chứa chữ này (không phân biệt hoa thường), VD “gym”, “Atlas”, tên khách."
+    "<br>• <b>Màu Google</b>: số màu của sự kiện trên Google Calendar: "
+    + ", ".join(f"{k} = {v}" for k, v in S.GCAL_COLOR_NAMES.items()) + ".</div>",
+    unsafe_allow_html=True,
+)
+from core.editors import edit_table  # noqa: E402
+
+cc = st.column_config
+edit_table(
+    "cal_rules", db.cal_rules(),
+    {
+        "order": (cc.NumberColumn("Thứ tự", min_value=0, step=1, width="small"), lambda v: v, lambda v: int(v) if v is not None and v == v else 99),
+        "match": (cc.SelectboxColumn("Kiểu", options=["Từ khoá", "Màu Google"], required=True), lambda v: v, lambda v: v),
+        "value": (cc.TextColumn("Giá trị", required=True), lambda v: v, lambda v: str(v).strip() if v is not None and v == v else None),
+        "kind": (cc.SelectboxColumn("Phân loại", options=[k for k in S.CATEGORIES if k not in ("Ngủ", "Di chuyển")], required=True,
+                                    format_func=lambda k: f"{ui.KIND_ICON[k]} {ui.KIND_LABEL[k]}"), lambda v: v, lambda v: v),
+    },
+    required=["match", "value", "kind"], widget_key="ed_rules", defaults={"order": 99},
+)
+st.caption("Mẹo: trên Google Calendar, đặt cùng 1 màu cho mọi ca dạy (VD Vàng chuối = 5) là web tự nhận ra, kể cả khi tên ca không có từ khoá.")
 
 st.markdown("##### Giao diện sáng / tối")
 st.markdown(

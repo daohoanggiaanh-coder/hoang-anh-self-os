@@ -19,15 +19,71 @@ DAY_GROUPS = {
 }
 DAY_OPTIONS = list(DAY_GROUPS.keys())
 
-FIXED_KINDS = ["Ngủ", "Burpee", "Gia đình", "Công việc", "Tập", "Khác"]
-TASK_KINDS = ["Khó", "Học", "Nhẹ", "Tập"]
+# ------------------------------------------------------------- phân loại & màu
+# kind: (tên hiển thị, biểu tượng, màu web, màu Google Calendar 1–11)
+CATEGORIES = {
+    "PT": ("Dạy PT · Khách riêng", "🏋️", "#D4A94F", "5"),  # Banana
+    "PT_Atlas": ("Dạy PT · Atlas", "🔴", "#D0453A", "11"),  # Tomato — lịch lễ tân Atlas nhập
+    "Atlas": ("Quản lý Atlas", "🏢", "#4F7FBF", "9"),  # Blueberry
+    "Công việc": ("Công việc khác", "💼", "#3E9A9A", "7"),  # Peacock
+    "Di chuyển": ("Di chuyển", "🛵", "#6E6A62", "8"),
+    "Khó": ("Việc tập trung", "🎯", "#B65FA6", "4"),  # Flamingo
+    "Học": ("Học kỹ năng", "📚", "#5FA36F", "10"),     # Basil
+    "Nhẹ": ("Việc nhẹ", "✉️", "#8C877C", "8"),         # Graphite
+    "Tập": ("Tự tập", "💪", "#D9773B", "6"),           # Tangerine
+    "Burpee": ("Burpee", "🐶", "#9C6B3E", "4"),
+    "Gia đình": ("Gia đình / riêng", "🏠", "#8A6BB8", "3"),  # Grape
+    "Ngủ": ("Ngủ", "🌙", "#3F4D72", "1"),
+    "Khác": ("Khác", "•", "#7A756B", "1"),
+}
+PT_KINDS = {"PT", "PT_Atlas"}
+TRAVEL_KINDS = {"PT", "PT_Atlas", "Atlas"}  # loại việc phải đi lại (cộng giờ di chuyển trước/sau)
+GCAL_COLOR_NAMES = {"1": "Oải hương", "2": "Xanh lá nhạt", "3": "Nho", "4": "Hồng hạc", "5": "Vàng chuối", "6": "Cam",
+                    "7": "Xanh công", "8": "Xám", "9": "Xanh việt quất", "10": "Xanh húng", "11": "Đỏ cà chua"}
+
+# Quy tắc phân loại sự kiện Google Calendar (từ trên xuống, khớp quy tắc nào trước thì lấy loại đó)
+DEFAULT_RULES = [
+    {"match": "Từ khoá", "value": "tự tập", "kind": "Tập", "order": 0},
+    {"match": "Từ khoá", "value": "atlas", "kind": "Atlas", "order": 1},
+    {"match": "Từ khoá", "value": "họp", "kind": "Công việc", "order": 2},
+    {"match": "Từ khoá", "value": "gym", "kind": "PT", "order": 3},
+    {"match": "Từ khoá", "value": "pt", "kind": "PT", "order": 4},
+    {"match": "Màu Google", "value": "5", "kind": "PT", "order": 5},
+    {"match": "Từ khoá", "value": "gia đình", "kind": "Gia đình", "order": 6},
+]
+
+
+def classify_event(ev: dict, rules: list[dict], pt_calendar: str = "PT") -> str:
+    """Trả về kind cho 1 sự kiện Google Calendar."""
+    if ev.get("kind_override") in CATEGORIES:
+        return ev["kind_override"]
+    if ev.get("cal") == pt_calendar:
+        return "PT"
+    title = str(ev.get("title", "")).lower()
+    color = str(ev.get("color") or "")
+    for r in sorted(rules, key=lambda r: r.get("order", 99)):
+        val = str(r.get("value", "")).strip().lower()
+        if not val or r.get("kind") not in CATEGORIES:
+            continue
+        if r.get("match") == "Màu Google" and color == val:
+            return r["kind"]
+        if r.get("match", "Từ khoá") == "Từ khoá" and val in title:
+            return r["kind"]
+    if ev.get("cal") is None:  # dữ liệu cũ chỉ đọc lịch PT
+        return "PT"
+    return "Khác"
+
+
+FIXED_KINDS = ["Ngủ", "Burpee", "Gia đình", "Atlas", "Công việc", "Tập", "Khác"]
+TASK_KINDS = ["Khó", "Học", "Nhẹ", "Tập", "Atlas"]
 TASK_KIND_HELP = {
     "Khó": "việc cần tập trung (kế hoạch, tài chính, nội dung...) → giờ tỉnh táo",
     "Học": "học kỹ năng → giờ tỉnh táo",
     "Nhẹ": "việc nhẹ (tin nhắn, dọn dẹp, việc vặt) → giờ hay mệt",
     "Tập": "tự tập → giờ bình thường, tránh giờ mệt",
+    "Atlas": "việc quản lý Atlas (báo cáo, doanh thu, marketing) → giờ tỉnh táo",
 }
-WORK_KINDS = {"PT", "Công việc", "Di chuyển", "Khó", "Nhẹ"}
+WORK_KINDS = {"PT", "PT_Atlas", "Atlas", "Công việc", "Di chuyển", "Khó", "Nhẹ"}
 
 # Điểm phù hợp năng lượng cho từng loại việc: (tỉnh táo, bình thường, mệt)
 ENERGY_WEIGHT = {
@@ -35,6 +91,7 @@ ENERGY_WEIGHT = {
     "Học": (3.0, 1.5, 0.0),
     "Nhẹ": (0.5, 2.0, 3.0),
     "Tập": (1.5, 2.0, 0.5),
+    "Atlas": (3.0, 1.5, 0.5),
 }
 
 DEFAULT_SETTINGS = {
@@ -51,6 +108,8 @@ DEFAULT_SETTINGS = {
     "sleep_target_min": 420,
     "work_week_limit_h": 55,
     "pt_calendar": "PT",
+    "atlas_calendar": "pigngo2101@gmail.com",  # lịch chung Atlas do lễ tân nhập
+    "atlas_color": "11",                        # chỉ lấy ca màu đỏ (Tomato) = ca của anh
     "read_primary": True,
     "write_gcal": True,
 }
@@ -153,10 +212,13 @@ def fixed_items(fixed: list[dict], d: date) -> list[Item]:
     return out
 
 
-def pt_items(events: list[dict], d: date, commute: int, chain_gap: int | None = None) -> list[Item]:
-    """Ca PT từ Google Calendar + thời gian di chuyển trước/sau mỗi chuỗi ca liền nhau."""
+def pt_items(events: list[dict], d: date, commute: int, chain_gap: int | None = None,
+             rules: list[dict] | None = None, pt_calendar: str = "PT") -> list[Item]:
+    """Sự kiện Google Calendar → Item đã phân loại.
+    Loại cần đi lại (PT, Atlas) được cộng thời gian di chuyển trước/sau mỗi chuỗi ca liền nhau."""
     if chain_gap is None:
         chain_gap = 2 * commute
+    rules = DEFAULT_RULES if rules is None else rules
     day0 = datetime(d.year, d.month, d.day)
     sessions = []
     for ev in events:
@@ -170,19 +232,22 @@ def pt_items(events: list[dict], d: date, commute: int, chain_gap: int | None = 
         em = (e - day0).total_seconds() / 60
         if em <= 0 or sm >= DAY:
             continue
-        sessions.append((max(0, int(sm)), min(DAY, int(em)), ev.get("title") or "Ca PT", ev.get("id", "")))
+        kind = classify_event(ev, rules, pt_calendar)
+        sessions.append((max(0, int(sm)), min(DAY, int(em)), ev.get("title") or "Sự kiện", ev.get("id", ""), kind))
     sessions.sort()
     out: list[Item] = []
+    travel = [x for x in sessions if x[4] in TRAVEL_KINDS]
+    for x in sessions:
+        out.append(Item(x[0], x[1], x[2], x[4], "pt" if x[4] in PT_KINDS else "gcal", x[3]))
     prev_end = None
-    for i, (s, e, title, ref) in enumerate(sessions):
+    for i, (s, e, _t, _r, _k) in enumerate(travel):
         if commute and (prev_end is None or s - prev_end > chain_gap):
             out.append(Item(max(0, s - commute), s, "Di chuyển", "Di chuyển", "travel"))
-        out.append(Item(s, e, title, "PT", "pt", ref))
-        nxt = sessions[i + 1][0] if i + 1 < len(sessions) else None
+        nxt = travel[i + 1][0] if i + 1 < len(travel) else None
         if commute and (nxt is None or nxt - e > chain_gap):
             out.append(Item(e, min(DAY, e + commute), "Di chuyển", "Di chuyển", "travel"))
         prev_end = e
-    return out
+    return sorted(out, key=lambda it: (it.start, it.end))
 
 
 def event_items(events: list[dict], d: date) -> list[Item]:
@@ -217,7 +282,8 @@ def block_items(blocks: list[dict], d: date) -> list[Item]:
 def day_items(d: date, fixed, pt_events, events, blocks, settings: dict) -> list[Item]:
     items = (
         fixed_items(fixed, d)
-        + pt_items(pt_events, d, int(settings.get("commute_min", 15)))
+        + pt_items(pt_events, d, int(settings.get("commute_min", 15)), rules=settings.get("_rules"),
+                   pt_calendar=settings.get("pt_calendar", "PT"))
         + event_items(events, d)
         + block_items(blocks, d)
     )
@@ -402,7 +468,7 @@ def analyze_week(days: list[date], items_by_day: dict[date, list[Item]], setting
         has_sleep = has_sleep or sleep > 0
         work = sum(it.minutes for it in its if it.kind in WORK_KINDS)
         learn = sum(it.minutes for it in its if it.kind == "Học")
-        pt = sum(it.minutes for it in its if it.kind == "PT")
+        pt = sum(it.minutes for it in its if it.kind in PT_KINDS)
         slots = free_slots([(it.start, it.end) for it in its], window, min_slot)
         free = sum(e - s for s, e in slots)
         work_total += work

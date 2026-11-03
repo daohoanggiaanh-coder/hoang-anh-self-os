@@ -1,5 +1,12 @@
 # Nhật ký phiên bản
 
+## 0.3.0 — 03/11/2026
+- Phân loại & màu: 12 loại việc có màu + biểu tượng riêng (Dạy PT · Khách riêng, Dạy PT · Atlas, Quản lý Atlas, Học, Tự tập, Burpee…), chú thích màu.
+- Bản đồ màu cả tuần (5h–23h) + tổng giờ theo loại.
+- Đọc lịch Atlas do lễ tân nhập (pigngo2101@gmail.com), chỉ lấy ca màu đỏ (= ca của anh).
+- Quy tắc phân loại theo từ khoá / màu Google, sửa được trong Cài đặt; chỉ loại PT/Atlas được cộng giờ đi lại.
+- Khối do web tạo trên Google Calendar được tô màu theo loại.
+
 ## 0.2.5 — 03/11/2026
 - Đọc cả lịch chính + lịch PT trong 1 lần gọi (bật/tắt trong Cài đặt); bỏ các khối do Self OS tạo để không tính trùng.
 

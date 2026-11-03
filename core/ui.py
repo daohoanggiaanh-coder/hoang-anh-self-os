@@ -11,19 +11,11 @@ from core.scheduler import Item, fmt, fmt_dur
 
 TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 
-KIND_COLOR = {
-    "Ngủ": "#4A5A7E",
-    "Burpee": "#B08947",
-    "PT": "#C9A45C",
-    "Di chuyển": "#6E6A62",
-    "Công việc": "#C9A45C",
-    "Khó": "#D4AF63",
-    "Học": "#6E9C7E",
-    "Nhẹ": "#8C877C",
-    "Tập": "#B5653F",
-    "Gia đình": "#82709E",
-    "Khác": "#7A756B",
-}
+from core.scheduler import CATEGORIES  # noqa: E402
+
+KIND_COLOR = {k: v[2] for k, v in CATEGORIES.items()}
+KIND_ICON = {k: v[1] for k, v in CATEGORIES.items()}
+KIND_LABEL = {k: v[0] for k, v in CATEGORIES.items()}
 ENERGY_ICON = {"Tỉnh táo": "⚡", "Bình thường": "◐", "Mệt": "☾"}
 
 
@@ -177,7 +169,8 @@ def timeline_html(items: list[Item], slots: list[tuple[int, int]], now_min: int 
             now = " now" if now_min is not None and it.start <= now_min < it.end else ""
             out.append(
                 f'<div class="so-row{now}" style="--c:{c}"><span class="so-time">{fmt(it.start)}–{fmt(it.end)}</span>'
-                f'<span class="so-name">{html.escape(it.title)}</span><span class="so-chip">{html.escape(it.kind)}</span></div>'
+                f'<span class="so-name">{KIND_ICON.get(it.kind, "•")} {html.escape(it.title)}</span>'
+                f'<span class="so-chip" style="background:{c}26;color:{c};border:1px solid {c}66">{html.escape(KIND_LABEL.get(it.kind, it.kind))}</span></div>'
             )
         else:
             s, e = obj
@@ -201,3 +194,55 @@ def flash():
     msg = st.session_state.pop("_flash", None)
     if msg:
         st.success(msg)
+
+
+def legend_html(kinds: list[str] | None = None) -> str:
+    kinds = kinds or [k for k in CATEGORIES if k not in ("Ngủ",)]
+    return '<div style="display:flex;flex-wrap:wrap;gap:6px 12px;margin:4px 0 10px">' + "".join(
+        f'<span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem">'
+        f'<span style="width:10px;height:10px;border-radius:3px;background:{KIND_COLOR[k]}"></span>'
+        f'{KIND_ICON[k]} {html.escape(KIND_LABEL[k])}</span>' for k in kinds if k in CATEGORIES) + "</div>"
+
+
+def week_map_html(days, items_by_day: dict, slots_by_day: dict, start_min: int = 300, end_min: int = 1380,
+                  today=None) -> str:
+    """Bản đồ màu cả tuần: mỗi cột 1 ngày, khối màu theo loại việc, vạch đứt = giờ trống."""
+    from core.scheduler import WEEKDAY_NAMES, fmt
+
+    span = end_min - start_min
+    px = 26  # px mỗi giờ
+    h = span / 60 * px
+    hours = "".join(
+        f'<div style="position:absolute;top:{(m - start_min) / 60 * px:.1f}px;left:0;right:0;border-top:1px solid var(--line);'
+        f'font-size:.6rem;color:var(--muted);padding-left:2px">{m // 60}h</div>'
+        for m in range(start_min, end_min + 1, 120))
+    cols = []
+    for d in days:
+        blocks = []
+        for s_, e_ in slots_by_day.get(d, []):
+            s2, e2 = max(s_, start_min), min(e_, end_min)
+            if e2 > s2:
+                blocks.append(f'<div title="Trống {fmt(s_)}–{fmt(e_)}" style="position:absolute;left:2px;right:2px;'
+                              f'top:{(s2 - start_min) / 60 * px:.1f}px;height:{(e2 - s2) / 60 * px:.1f}px;'
+                              f'border:1px dashed var(--gold);border-radius:4px;opacity:.45"></div>')
+        for it in items_by_day.get(d, []):
+            if it.kind == "Ngủ":
+                continue
+            s2, e2 = max(it.start, start_min), min(it.end, end_min)
+            if e2 <= s2:
+                continue
+            c = KIND_COLOR.get(it.kind, "#7A756B")
+            hh = (e2 - s2) / 60 * px
+            label = KIND_ICON.get(it.kind, "") if hh >= 13 else ""
+            blocks.append(f'<div title="{fmt(it.start)}–{fmt(it.end)} · {html.escape(it.title)} ({html.escape(KIND_LABEL.get(it.kind, it.kind))})" '
+                          f'style="position:absolute;left:2px;right:2px;top:{(s2 - start_min) / 60 * px:.1f}px;height:{max(hh, 3):.1f}px;'
+                          f'background:{c};border-radius:4px;font-size:.62rem;line-height:1;display:flex;align-items:center;'
+                          f'justify-content:center;overflow:hidden">{label}</div>')
+        is_today = today is not None and d == today
+        head = (f'<div style="text-align:center;font-size:.7rem;font-weight:{700 if is_today else 500};'
+                f'color:{"var(--gold2)" if is_today else "var(--muted)"};margin-bottom:4px">'
+                f'{WEEKDAY_NAMES[d.weekday()].replace("Thứ ", "T").replace("Chủ nhật", "CN")}<br>{d.day:02d}/{d.month:02d}</div>')
+        cols.append(f'<div style="flex:1;min-width:0">{head}<div style="position:relative;height:{h:.0f}px;'
+                    f'background:var(--card2);border-radius:6px">{"".join(blocks)}</div></div>')
+    return (f'<div style="display:flex;gap:4px"><div style="width:22px;position:relative;margin-top:30px;height:{h:.0f}px">{hours}</div>'
+            + "".join(cols) + "</div>")

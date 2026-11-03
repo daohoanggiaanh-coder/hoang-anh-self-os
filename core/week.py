@@ -47,6 +47,7 @@ def skill_tasks(skills: list[dict], blocks: list[dict], learn_log: list[dict], d
 
 def load_week(ref: date) -> Week:
     st_ = db.settings()
+    st_["_rules"] = db.cal_rules()
     days = S.week_days(ref)
     fixed = db.fixed_schedule()
     events = db.table("events")

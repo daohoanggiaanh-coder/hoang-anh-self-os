@@ -123,11 +123,13 @@ function listMany(names, start, end) {
   const fmt = function (d) { return Utilities.formatDate(d, TZ, "yyyy-MM-dd'T'HH:mm"); };
   let all = [];
   names.forEach(function (name) {
-    const cal = name === '__primary__' ? CalendarApp.getDefaultCalendar() : (CalendarApp.getCalendarsByName(name)[0] || null);
+    let cal = null;
+    if (name === '__primary__') cal = CalendarApp.getDefaultCalendar();
+    else { try { cal = CalendarApp.getCalendarById(name); } catch (err) {} if (!cal) cal = CalendarApp.getCalendarsByName(name)[0] || null; }
     if (!cal) return;
     cal.getEvents(s, e).forEach(function (ev) {
       all.push({
-        id: ev.getId(), title: ev.getTitle(), cal: name,
+        id: ev.getId(), title: ev.getTitle(), cal: name, color: String(ev.getColor() || ''),
         fromSelfOS: (ev.getDescription() || '').indexOf('Self OS') >= 0,
         start: ev.isAllDayEvent() ? Utilities.formatDate(ev.getAllDayStartDate(), TZ, 'yyyy-MM-dd') : fmt(ev.getStartTime()),
         end: ev.isAllDayEvent() ? Utilities.formatDate(ev.getAllDayEndDate(), TZ, 'yyyy-MM-dd') : fmt(ev.getEndTime()),
@@ -145,6 +147,7 @@ function createEvent(ev) {
   const e = new Date(ev.date + 'T' + ev.end + ':00+07:00');
   const created = cal.createEvent(ev.title || 'Self OS', s, e, { description: 'Tạo từ Hoàng Anh · Self OS' });
   created.setVisibility(CalendarApp.Visibility.PRIVATE);
+  if (ev.color) created.setColor(String(ev.color)); // màu theo loại việc (1–11)
   return created.getId();
 }
 

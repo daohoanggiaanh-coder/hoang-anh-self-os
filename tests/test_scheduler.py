@@ -156,3 +156,21 @@ def test_skill_tasks_remaining():
     tasks = skill_tasks(skills, blocks, learn, days)
     assert [t["minutes"] for t in tasks] == [60]   # 150 - 30 - 60 = 60
     assert tasks[0]["kind"] == "Học" and tasks[0]["title"] == "Học: Tiếng Anh"
+
+
+def test_classify_and_travel_only_for_pt_atlas():
+    evs = [
+        {"id": "1", "title": "A Đại (gold gym)", "start": "2026-11-02T15:00", "end": "2026-11-02T16:00", "cal": "__primary__"},
+        {"id": "2", "title": "Họp Atlas tháng", "start": "2026-11-02T18:00", "end": "2026-11-02T19:00", "cal": "__primary__"},
+        {"id": "3", "title": "Ăn cưới", "start": "2026-11-02T20:00", "end": "2026-11-02T21:00", "cal": "__primary__"},
+        {"id": "4", "title": "Khách X", "start": "2026-11-02T06:00", "end": "2026-11-02T07:00", "cal": "PT"},
+        {"id": "5", "title": "Tự tập ở gym", "start": "2026-11-02T08:00", "end": "2026-11-02T09:00", "cal": "__primary__"},
+        {"id": "6", "title": "Không từ khoá", "color": "5", "start": "2026-11-02T10:00", "end": "2026-11-02T11:00", "cal": "__primary__"},
+    ]
+    its = S.pt_items(evs, MON, commute=15)
+    kinds = {it.title: it.kind for it in its if it.source != "travel"}
+    assert kinds == {"A Đại (gold gym)": "PT", "Họp Atlas tháng": "Atlas", "Ăn cưới": "Khác", "Khách X": "PT",
+                     "Tự tập ở gym": "Tập", "Không từ khoá": "PT"}
+    travel = [(S.fmt(i.start), S.fmt(i.end)) for i in its if i.source == "travel"]
+    assert ("20:45", "21:00") not in travel and ("21:00", "21:15") not in travel  # đám cưới không cộng đi lại
+    assert ("14:45", "15:00") in travel and ("19:00", "19:15") in travel

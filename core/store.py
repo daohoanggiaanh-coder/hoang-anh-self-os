@@ -110,6 +110,9 @@ class LocalStore:
         p = self.folder / "calendar_primary.json"
         if "__primary__" in calendars and p.exists():
             evs += [e for e in json.loads(p.read_text(encoding="utf-8")) if start <= e["start"][:10] <= end]
+        pa = self.folder / "calendar_atlas.json"
+        if pa.exists():
+            evs += [e for e in json.loads(pa.read_text(encoding="utf-8")) if start <= e["start"][:10] <= end and e.get("cal") in calendars]
         return evs
 
     def calendar_create(self, ev: dict) -> str:

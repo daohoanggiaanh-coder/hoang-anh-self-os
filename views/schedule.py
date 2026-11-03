@@ -57,6 +57,19 @@ with tab_week:
     )
     st.write("")
     ui.warnings(wk.analysis["warnings"])
+    st.markdown("**Bản đồ màu cả tuần** · 5h–23h")
+    st.html(ui.legend_html())
+    st.html(ui.week_map_html(days, wk.items, {p["date"]: p["slots"] for p in pdays}, today=now.date()))
+    by_kind = {}
+    for d_ in days:
+        for it in wk.items[d_]:
+            if it.kind != "Ngủ":
+                by_kind[it.kind] = by_kind.get(it.kind, 0) + it.minutes
+    if by_kind:
+        st.html('<div class="so-muted" style="margin:8px 0 4px">Tổng theo loại: ' + " · ".join(
+            f'<span style="color:{ui.KIND_COLOR.get(k)}">{ui.KIND_ICON.get(k, "")} {ui.KIND_LABEL.get(k, k)} {S.fmt_dur(m)}</span>'
+            for k, m in sorted(by_kind.items(), key=lambda x: -x[1])) + "</div>")
+    st.markdown("**Chi tiết từng ngày**")
     for p in pdays:
         d = p["date"]
         is_today = d == now.date()
@@ -70,7 +83,8 @@ def _accept(p: dict):
     if wk.settings.get("write_gcal") and not db.is_local():
         try:
             gcal_id = db.store().calendar_create(
-                {"date": p["date"], "start": p["start_s"], "end": p["end_s"], "title": f"[Self OS] {p['title']}"}
+                {"date": p["date"], "start": p["start_s"], "end": p["end_s"], "title": f"[Self OS] {p['title']}",
+                 "color": S.CATEGORIES.get(p["kind"], S.CATEGORIES["Khác"])[3]}
             )
         except Exception as e:  # vẫn lưu vào web dù không ghi được lên lịch
             st.session_state["_flash_err"] = f"Không ghi được lên Google Calendar: {e}"
@@ -125,7 +139,7 @@ with tab_prop:
             with st.container(border=True):
                 st.markdown(
                     f"**{p['title']}**  \n{S.vn_date(d)} · {p['start_s']}–{p['end_s']} · "
-                    f"{ui.ENERGY_ICON[p['energy']]} {p['energy']} · _{p['kind']}_"
+                    f"{ui.ENERGY_ICON[p['energy']]} {p['energy']} · {ui.KIND_ICON.get(p['kind'], '')} _{ui.KIND_LABEL.get(p['kind'], p['kind'])}_"
                     + (f"  \n:orange[{p['note']}]" if p["note"] else "")
                 )
                 row = st.container(horizontal=True, wrap=False)

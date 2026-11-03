@@ -99,7 +99,8 @@ with left:
         if not habits:
             st.caption("Chưa có thói quen — thêm ở trang Thói quen.")
 
-    ui.card("Lịch hôm nay", ui.timeline_html(items, day["slots"], now_min))
+    ui.card("Lịch hôm nay", ui.legend_html(sorted({it.kind for it in items if it.kind != "Ngủ"}, key=list(ui.KIND_COLOR).index))
+            + ui.timeline_html(items, day["slots"], now_min))
 
 # ------------------------------------------------------------- cột phải
 with right:

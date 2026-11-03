@@ -46,6 +46,7 @@ def is_local() -> bool:
 TABLES = [
     "settings", "fixed", "events", "blocks", "tasks", "daily", "habits", "habit_log", "skills", "learn_log",
     "body", "look_items", "look_log", "photos", "wardrobe", "studio_tasks", "studio_budget", "studio_monthly", "goals",
+    "cal_rules",
 ]
 LIGHT_TABLES = [t for t in TABLES if t != "photos"]  # ảnh nặng → chỉ tải khi mở trang Vẻ ngoài
 
@@ -146,7 +147,23 @@ def calendar_names() -> list[str]:
     names = [s.get("pt_calendar", "PT") or "PT"]
     if s.get("read_primary", True):
         names.append("__primary__")
+    if s.get("atlas_calendar"):
+        names.append(s["atlas_calendar"])
     return names
+
+
+def tag_atlas(evs: list[dict], atlas_cal: str | None, atlas_color: str | None) -> list[dict]:
+    """Lịch Atlas có ca của cả team → chỉ giữ ca đúng màu của anh, gắn loại PT_Atlas."""
+    if not atlas_cal:
+        return evs
+    out = []
+    for e in evs:
+        if e.get("cal") == atlas_cal:
+            if atlas_color and str(e.get("color") or "") != str(atlas_color):
+                continue
+            e = {**e, "kind_override": "PT_Atlas"}
+        out.append(e)
+    return out
 
 
 def filter_busy_events(evs: list[dict]) -> list[dict]:
@@ -175,7 +192,8 @@ def pt_events(start: str, end: str) -> tuple[list[dict], str | None]:
             evs = st_.calendar_events(start, end, calendar=names[0])
     except StoreError as e:
         return (hit[1] if hit else []), str(e)
-    evs = filter_busy_events(evs)
+    s_ = settings()
+    evs = tag_atlas(filter_busy_events(evs), s_.get("atlas_calendar"), s_.get("atlas_color"))
     c[ck] = (time.time(), evs)
     return evs, None
 
@@ -230,3 +248,10 @@ def progress_data():
         learn_log=table("learn_log"), body=table("body"), look_log=table("look_log"),
         studio_tasks=studio_tasks(), goals=table("goals"),
     )
+
+
+def cal_rules() -> list[dict]:
+    from core.scheduler import DEFAULT_RULES
+
+    _seed_once("rules", "cal_rules", [dict(r) for r in DEFAULT_RULES])
+    return sorted(table("cal_rules"), key=lambda r: r.get("order", 99))
