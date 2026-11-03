@@ -105,6 +105,13 @@ class LocalStore:
         evs = json.loads(p.read_text(encoding="utf-8"))
         return [e for e in evs if start <= e["start"][:10] <= end]
 
+    def calendar_many(self, start: str, end: str, calendars: list[str]) -> list[dict]:
+        evs = self.calendar_events(start, end)
+        p = self.folder / "calendar_primary.json"
+        if "__primary__" in calendars and p.exists():
+            evs += [e for e in json.loads(p.read_text(encoding="utf-8")) if start <= e["start"][:10] <= end]
+        return evs
+
     def calendar_create(self, ev: dict) -> str:
         self.append("_gcal_log", [make_row(new_key(), ev)])
         return "local-" + new_key()
@@ -157,6 +164,10 @@ class AppsScriptStore:
         return self._call(
             {"action": "calendar", "calendar": calendar, "start": start, "end": end}
         ).get("events", [])
+
+    def calendar_many(self, start: str, end: str, calendars: list[str]) -> list[dict]:
+        out = self._call({"action": "calendars", "calendars": calendars, "start": start, "end": end})
+        return out.get("events", [])
 
     def calendar_create(self, ev: dict) -> str:
         return self._call({"action": "calendar_create", "event": ev}).get("id", "")

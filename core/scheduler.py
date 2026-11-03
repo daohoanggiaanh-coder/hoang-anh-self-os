@@ -51,6 +51,7 @@ DEFAULT_SETTINGS = {
     "sleep_target_min": 420,
     "work_week_limit_h": 55,
     "pt_calendar": "PT",
+    "read_primary": True,
     "write_gcal": True,
 }
 

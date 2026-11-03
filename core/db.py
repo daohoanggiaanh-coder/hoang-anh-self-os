@@ -141,18 +141,41 @@ def fixed_schedule() -> list[dict]:
 
 
 # ------------------------------------------------------------- Google Calendar
+def calendar_names() -> list[str]:
+    s = settings()
+    names = [s.get("pt_calendar", "PT") or "PT"]
+    if s.get("read_primary", True):
+        names.append("__primary__")
+    return names
+
+
+def filter_busy_events(evs: list[dict]) -> list[dict]:
+    """Bỏ các khối do chính Self OS tạo trên lịch chính (đã có trong bảng blocks) để không tính trùng."""
+    return [e for e in evs if not e.get("fromSelfOS") and not str(e.get("title", "")).startswith("[Self OS]")]
+
+
 def pt_events(start: str, end: str) -> tuple[list[dict], str | None]:
-    """Trả về (sự kiện, lỗi). Cache theo phiên."""
-    cal = settings().get("pt_calendar", "PT")
-    ck = f"_gcal:{cal}:{start}:{end}"
+    """Sự kiện bận từ Google Calendar (lịch PT + lịch chính nếu bật). Trả về (sự kiện, lỗi)."""
+    names = calendar_names()
+    ck = f"_gcal:{','.join(names)}:{start}:{end}"
     c = _cache()
     hit = c.get(ck)
     if hit and time.time() - hit[0] < CACHE_TTL:
         return hit[1], None
     try:
-        evs = store().calendar_events(start, end, calendar=cal)
+        st_ = store()
+        if hasattr(st_, "calendar_many"):
+            try:
+                evs = st_.calendar_many(start, end, names)
+            except StoreError as e:
+                if "unknown action" not in str(e):
+                    raise
+                evs = st_.calendar_events(start, end, calendar=names[0])  # Apps Script bản cũ
+        else:
+            evs = st_.calendar_events(start, end, calendar=names[0])
     except StoreError as e:
         return (hit[1] if hit else []), str(e)
+    evs = filter_busy_events(evs)
     c[ck] = (time.time(), evs)
     return evs, None
 

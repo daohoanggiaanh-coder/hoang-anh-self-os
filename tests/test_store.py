@@ -37,3 +37,10 @@ def test_edit_table_merge_keeps_hidden_fields(tmp_path, monkeypatch):
     E.edit_table("habits", recs, {"name": (None, ident, ident)}, ["name"], "w", defaults={"active": True})
     assert saved["put"] == [{"key": "a", "name": "Mới", "icon": "📖", "order": 3}]
     assert "del" not in saved
+
+
+def test_filter_selfos_blocks():
+    from core.db import filter_busy_events
+
+    evs = [{"title": "A Đại (gold gym)"}, {"title": "[Self OS] Học: Tiếng Anh"}, {"title": "x", "fromSelfOS": True}]
+    assert [e["title"] for e in filter_busy_events(evs)] == ["A Đại (gold gym)"]

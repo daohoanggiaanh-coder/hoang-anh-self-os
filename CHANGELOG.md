@@ -1,5 +1,8 @@
 # Nhật ký phiên bản
 
+## 0.2.5 — 03/11/2026
+- Đọc cả lịch chính + lịch PT trong 1 lần gọi (bật/tắt trong Cài đặt); bỏ các khối do Self OS tạo để không tính trùng.
+
 ## 0.2.4 — 03/11/2026
 - Khôi phục đăng nhập từ cookie bằng ô nhập ẩn (iframe Streamlit không được phép chuyển trang).
 

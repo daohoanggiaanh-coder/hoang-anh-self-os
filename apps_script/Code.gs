@@ -26,6 +26,7 @@ function doPost(e) {
       case 'read_many': return out({ ok: true, tables: readMany(req.tables || []) });
       case 'append': return out({ ok: true, n: appendRows(req.table, req.rows || []) });
       case 'calendar': return out({ ok: true, events: listEvents(req.calendar || 'PT', req.start, req.end) });
+      case 'calendars': return out({ ok: true, events: listMany(req.calendars || ['PT'], req.start, req.end) });
       case 'calendar_create': return out({ ok: true, id: createEvent(req.event || {}) });
       case 'calendar_delete': deleteEvent(req.id); return out({ ok: true });
       default: return out({ ok: false, error: 'unknown action' });
@@ -113,6 +114,28 @@ function listEvents(name, start, end) {
       allDay: ev.isAllDayEvent()
     };
   });
+}
+
+/** Đọc nhiều lịch 1 lần. '__primary__' = lịch chính. Lịch không tồn tại thì bỏ qua (không báo lỗi). */
+function listMany(names, start, end) {
+  const s = new Date(start + 'T00:00:00+07:00');
+  const e = new Date(end + 'T23:59:59+07:00');
+  const fmt = function (d) { return Utilities.formatDate(d, TZ, "yyyy-MM-dd'T'HH:mm"); };
+  let all = [];
+  names.forEach(function (name) {
+    const cal = name === '__primary__' ? CalendarApp.getDefaultCalendar() : (CalendarApp.getCalendarsByName(name)[0] || null);
+    if (!cal) return;
+    cal.getEvents(s, e).forEach(function (ev) {
+      all.push({
+        id: ev.getId(), title: ev.getTitle(), cal: name,
+        fromSelfOS: (ev.getDescription() || '').indexOf('Self OS') >= 0,
+        start: ev.isAllDayEvent() ? Utilities.formatDate(ev.getAllDayStartDate(), TZ, 'yyyy-MM-dd') : fmt(ev.getStartTime()),
+        end: ev.isAllDayEvent() ? Utilities.formatDate(ev.getAllDayEndDate(), TZ, 'yyyy-MM-dd') : fmt(ev.getEndTime()),
+        allDay: ev.isAllDayEvent()
+      });
+    });
+  });
+  return all;
 }
 
 /** Tạo sự kiện RIÊNG TƯ trên lịch chính khi anh bấm "Nhận" một đề xuất. */

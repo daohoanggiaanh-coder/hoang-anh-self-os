@@ -40,6 +40,8 @@ with st.form("settings"):
 
     st.markdown("##### Google Calendar")
     cal = st.text_input("Tên lịch chứa ca PT", s.get("pt_calendar", "PT"))
+    read_primary = st.toggle("Đọc cả lịch chính (mọi sự kiện trên lịch chính tính là giờ bận, có cộng giờ đi lại)",
+                             bool(s.get("read_primary", True)))
     write_gcal = st.toggle("Khi bấm “Nhận” đề xuất → tạo sự kiện riêng tư trên lịch chính", bool(s.get("write_gcal", True)))
 
     if st.form_submit_button("Lưu cài đặt", type="primary"):
@@ -51,6 +53,7 @@ with st.form("settings"):
                 "buffer_min": int(buffer_min), "commute_min": int(commute), "min_slot": int(min_slot),
                 "max_deep_min": int(max_deep), "sleep_target_min": int(round(sleep_t * 60)),
                 "work_week_limit_h": int(work_lim), "pt_calendar": cal.strip() or "PT", "write_gcal": bool(write_gcal),
+                "read_primary": bool(read_primary),
             }
         )
         db.invalidate_calendar()
@@ -74,10 +77,13 @@ else:
     if st.button("Kiểm tra kết nối"):
         try:
             db.store()._call({"action": "ping"})
-            evs = db.store().calendar_events(S.week_days(ui.now_vn().date())[0].isoformat(),
-                                             S.week_days(ui.now_vn().date())[-1].isoformat(),
-                                             calendar=s.get("pt_calendar", "PT"))
-            st.success(f"Kết nối tốt. Tuần này lịch “{s.get('pt_calendar', 'PT')}” có {len(evs)} sự kiện.")
+            db.invalidate_calendar()
+            wd = S.week_days(ui.now_vn().date())
+            evs, err = db.pt_events(wd[0].isoformat(), wd[-1].isoformat())
+            if err:
+                st.error(err)
+            else:
+                st.success(f"Kết nối tốt. Tuần này đọc được {len(evs)} sự kiện bận từ Google Calendar.")
         except Exception as e:
             st.error(str(e))
 
