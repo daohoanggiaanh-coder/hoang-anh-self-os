@@ -21,14 +21,22 @@ def _secret(name: str, default=None):
 
 
 @st.cache_resource
-def _make_store(url: str | None, token: str | None):
+def _make_store(url: str | None, token: str | None, version: str = ""):
+    """version nằm trong khoá cache → mỗi lần nâng phiên bản code sẽ tạo đối tượng mới
+    (tránh dùng lại đối tượng của lớp cũ khi Streamlit Cloud cập nhật nóng)."""
     if url and token:
         return AppsScriptStore(url, token)
     return LocalStore(DATA_DIR)
 
 
 def store():
-    return _make_store(_secret("APPS_SCRIPT_URL"), _secret("APPS_SCRIPT_TOKEN"))
+    from core.version import __version__
+
+    obj = _make_store(_secret("APPS_SCRIPT_URL"), _secret("APPS_SCRIPT_TOKEN"), __version__)
+    if not hasattr(obj, "read_many"):  # phòng hờ: đối tượng cũ trong cache
+        _make_store.clear()
+        obj = _make_store(_secret("APPS_SCRIPT_URL"), _secret("APPS_SCRIPT_TOKEN"), __version__)
+    return obj
 
 
 def is_local() -> bool:

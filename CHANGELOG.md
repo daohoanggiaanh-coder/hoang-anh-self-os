@@ -1,5 +1,8 @@
 # Nhật ký phiên bản
 
+## 0.2.2 — 03/11/2026
+- Sửa lỗi AttributeError `read_many` sau khi cập nhật: kết nối lưu trữ được tạo lại theo từng phiên bản code.
+
 ## 0.2.1 — 03/11/2026
 - Tăng tốc: đọc gộp mọi bảng trong 1 lần gọi Apps Script (`read_many`), ghi xong cập nhật bộ đệm tại chỗ thay vì đọc lại.
   Trước đây mỗi trang gọi Google ~20 lần nối tiếp (rất chậm trên Streamlit Cloud).
