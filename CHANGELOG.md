@@ -1,5 +1,8 @@
 # Nhật ký phiên bản
 
+## 0.2.4 — 03/11/2026
+- Khôi phục đăng nhập từ cookie bằng ô nhập ẩn (iframe Streamlit không được phép chuyển trang).
+
 ## 0.2.3 — 03/11/2026
 - Ghi nhớ đăng nhập trên Streamlit Cloud: Cloud không chuyển cookie cho app → trang đăng nhập đọc cookie bằng JS và tự nạp lại với mã ghi nhớ.
 

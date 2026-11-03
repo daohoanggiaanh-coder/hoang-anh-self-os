@@ -93,20 +93,38 @@ def clear_cookie_if_logged_out():
         st.session_state["_cookie_cleared"] = True
 
 
-def restore_from_cookie_js():
-    """Streamlit Cloud không chuyển cookie vào st.context → đọc cookie bằng JS rồi nạp lại trang với ?k=.
-    Chỉ chuyển hướng khi địa chỉ chưa có k (tránh vòng lặp nếu mã đã hết hạn)."""
+def restore_from_cookie():
+    """Streamlit Cloud không chuyển cookie vào st.context, và iframe bị chặn chuyển trang.
+    Cách làm: JS đọc cookie rồi điền vào 1 ô nhập ẩn → Python nhận mã → so khớp → đăng nhập."""
     if st.session_state.get("_logged_out"):
         return
+    pw = _password()
+    with st.container(key="so_ck"):
+        val = st.text_input("ck", key="_ck", label_visibility="collapsed")
+    if val and pw and hmac.compare_digest(str(val), remember_token(pw)):
+        st.session_state["auth"] = True
+        st.query_params["k"] = val
+        st.rerun()
+    if st.session_state.get("_ck_tries", 0) >= 3:
+        return
+    st.session_state["_ck_tries"] = st.session_state.get("_ck_tries", 0) + 1
     st.iframe(
         f"""<script>
-        try {{
-          const top = window.top, d = top.document;
-          const m = d.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('{COOKIE}='));
-          const v = m ? m.split('=')[1] : '';
-          const u = new URL(top.location.href);
-          if (v && v.length >= 16 && !u.searchParams.get('k')) {{ u.searchParams.set('k', v); top.location.replace(u.toString()); }}
-        }} catch (e) {{}}
+        (function fill(n) {{
+          try {{
+            const d = window.parent.document;
+            const m = d.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('{COOKIE}='));
+            const v = m ? m.split('=')[1] : '';
+            if (!v || v.length < 16) return;
+            const el = d.querySelector('.st-key-so_ck input');
+            if (!el) {{ if (n < 20) setTimeout(() => fill(n + 1), 150); return; }}
+            const set = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
+            set.call(el, v);
+            el.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            el.dispatchEvent(new KeyboardEvent('keydown', {{ key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }}));
+            el.blur();
+          }} catch (e) {{}}
+        }})(0);
         </script>""",
         height=1,
     )

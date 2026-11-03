@@ -84,6 +84,7 @@ h1, h2, h3 {{ letter-spacing: -.01em; }}
 .so-bar > div {{ height:100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); }}
 .so-badge {{ display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border-radius:12px; border:1px solid var(--line); margin:0 6px 6px 0; font-size:.85rem; }}
 .so-badge.off {{ opacity:.35; filter: grayscale(1); }}
+.st-key-so_ck {{ position:absolute !important; left:-9999px; height:0; overflow:hidden; }}
 .so-ver {{ color: var(--muted); font-size: .72rem; letter-spacing: .08em; }}
 .stButton > button[kind="primary"] {{ color: #0B0B0C; font-weight: 600; }}
 @media (max-width: 640px) {{

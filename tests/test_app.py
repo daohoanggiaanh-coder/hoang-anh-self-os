@@ -29,14 +29,14 @@ def _app(password="pw"):
 def test_login_page_and_wrong_password():
     at = _app().run()
     assert not at.exception
-    at.text_input[0].input("sai")
+    at.text_input(key="pw").input("sai")
     at.button[0].click().run()
     assert any("Sai mật khẩu" in e.value for e in at.error)
 
 
 def test_login_then_today_and_schedule():
     at = _app().run()
-    at.text_input[0].input("pw")
+    at.text_input(key="pw").input("pw")
     at.button[0].click().run()
     assert not at.exception, at.exception
     html = " ".join(h.proto.body for h in at.get("html"))
@@ -149,3 +149,21 @@ def test_few_backend_reads_per_page(monkeypatch):
     calls.update(read=0, read_many=0)
     at.switch_page("views/review.py").run()
     assert calls["read_many"] == 0, calls  # đã có trong bộ đệm
+
+
+def test_cookie_restore_hidden_input():
+    """Mô phỏng JS điền mã cookie vào ô ẩn → tự đăng nhập."""
+    from core.auth import remember_token
+
+    at = _app().run()
+    at.text_input(key="_ck").input(remember_token("pw")).run()
+    assert not at.exception, at.exception
+    html = " ".join(h.proto.body for h in at.get("html"))
+    assert "Hôm nay của tôi" in html
+
+
+def test_cookie_restore_rejects_wrong_token():
+    at = _app().run()
+    at.text_input(key="_ck").input("x" * 32).run()
+    html = " ".join(h.proto.body for h in at.get("html"))
+    assert "Hôm nay của tôi" not in html

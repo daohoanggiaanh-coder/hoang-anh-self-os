@@ -16,7 +16,7 @@ ui.inject_head()
 
 def login_page():
     auth.clear_cookie_if_logged_out()
-    auth.restore_from_cookie_js()
+    auth.restore_from_cookie()
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         st.write("")
@@ -26,7 +26,7 @@ def login_page():
             st.error("Chưa đặt mật khẩu. Thêm APP_PASSWORD vào Secrets (xem README).")
             return
         with st.form("login"):
-            pw = st.text_input("Mật khẩu", type="password")
+            pw = st.text_input("Mật khẩu", type="password", key="pw")
             remember = st.checkbox("Ghi nhớ đăng nhập trên máy này", value=True)
             if st.form_submit_button("Vào", type="primary", width="stretch"):
                 if auth.check_password(pw):
