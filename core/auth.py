@@ -91,3 +91,22 @@ def clear_cookie_if_logged_out():
     if st.session_state.get("_logged_out") and not st.session_state.get("_cookie_cleared"):
         _set_cookie_js("", 0)
         st.session_state["_cookie_cleared"] = True
+
+
+def restore_from_cookie_js():
+    """Streamlit Cloud không chuyển cookie vào st.context → đọc cookie bằng JS rồi nạp lại trang với ?k=.
+    Chỉ chuyển hướng khi địa chỉ chưa có k (tránh vòng lặp nếu mã đã hết hạn)."""
+    if st.session_state.get("_logged_out"):
+        return
+    st.iframe(
+        f"""<script>
+        try {{
+          const top = window.top, d = top.document;
+          const m = d.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('{COOKIE}='));
+          const v = m ? m.split('=')[1] : '';
+          const u = new URL(top.location.href);
+          if (v && v.length >= 16 && !u.searchParams.get('k')) {{ u.searchParams.set('k', v); top.location.replace(u.toString()); }}
+        }} catch (e) {{}}
+        </script>""",
+        height=1,
+    )

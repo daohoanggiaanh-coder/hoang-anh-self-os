@@ -1,5 +1,8 @@
 # Nhật ký phiên bản
 
+## 0.2.3 — 03/11/2026
+- Ghi nhớ đăng nhập trên Streamlit Cloud: Cloud không chuyển cookie cho app → trang đăng nhập đọc cookie bằng JS và tự nạp lại với mã ghi nhớ.
+
 ## 0.2.2 — 03/11/2026
 - Sửa lỗi AttributeError `read_many` sau khi cập nhật: kết nối lưu trữ được tạo lại theo từng phiên bản code.
 

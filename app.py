@@ -16,6 +16,7 @@ ui.inject_head()
 
 def login_page():
     auth.clear_cookie_if_logged_out()
+    auth.restore_from_cookie_js()
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         st.write("")
