@@ -25,7 +25,9 @@ CATEGORIES = {
     "PT": ("Dạy PT · Khách riêng", "🏋️", "#D4A94F", "5"),  # Banana
     "PT_Atlas": ("Dạy PT · Atlas", "🔴", "#D0453A", "11"),  # Tomato — lịch lễ tân Atlas nhập
     "Atlas": ("Quản lý Atlas", "🏢", "#4F7FBF", "9"),  # Blueberry
-    "Công việc": ("Công việc khác", "💼", "#3E9A9A", "7"),  # Peacock
+    "Ca làm": ("Giờ làm Atlas", "🕘", "#34507F", "9"),     # Blueberry — ca trực/làm việc tại Atlas
+    "Content": ("Quay / dựng video", "🎬", "#1FB5C6", "7"),  # Peacock
+    "Công việc": ("Công việc khác", "💼", "#7C8BA1", "8"),
     "Di chuyển": ("Di chuyển", "🛵", "#6E6A62", "8"),
     "Khó": ("Việc tập trung", "🎯", "#B65FA6", "4"),  # Flamingo
     "Học": ("Học kỹ năng", "📚", "#5FA36F", "10"),     # Basil
@@ -37,7 +39,9 @@ CATEGORIES = {
     "Khác": ("Khác", "•", "#7A756B", "1"),
 }
 PT_KINDS = {"PT", "PT_Atlas"}
-TRAVEL_KINDS = {"PT", "PT_Atlas", "Atlas"}  # loại việc phải đi lại (cộng giờ di chuyển trước/sau)
+TRAVEL_KINDS = {"PT", "PT_Atlas", "Atlas", "Ca làm"}
+# Dạy khách trong giờ làm là bình thường → không báo trùng giữa các loại này
+OVERLAP_OK = {"Ca làm", "PT", "PT_Atlas", "Atlas", "Di chuyển"}  # loại việc phải đi lại (cộng giờ di chuyển trước/sau)
 GCAL_COLOR_NAMES = {"1": "Oải hương", "2": "Xanh lá nhạt", "3": "Nho", "4": "Hồng hạc", "5": "Vàng chuối", "6": "Cam",
                     "7": "Xanh công", "8": "Xám", "9": "Xanh việt quất", "10": "Xanh húng", "11": "Đỏ cà chua"}
 
@@ -75,15 +79,16 @@ def classify_event(ev: dict, rules: list[dict], pt_calendar: str = "PT") -> str:
 
 
 FIXED_KINDS = ["Ngủ", "Burpee", "Gia đình", "Atlas", "Công việc", "Tập", "Khác"]
-TASK_KINDS = ["Khó", "Học", "Nhẹ", "Tập", "Atlas"]
+TASK_KINDS = ["Khó", "Học", "Content", "Nhẹ", "Tập", "Atlas"]
 TASK_KIND_HELP = {
     "Khó": "việc cần tập trung (kế hoạch, tài chính, nội dung...) → giờ tỉnh táo",
     "Học": "học kỹ năng → giờ tỉnh táo",
     "Nhẹ": "việc nhẹ (tin nhắn, dọn dẹp, việc vặt) → giờ hay mệt",
     "Tập": "tự tập → giờ bình thường, tránh giờ mệt",
     "Atlas": "việc quản lý Atlas (báo cáo, doanh thu, marketing) → giờ tỉnh táo",
+    "Content": "quay / dựng video → giờ tỉnh táo hoặc bình thường",
 }
-WORK_KINDS = {"PT", "PT_Atlas", "Atlas", "Công việc", "Di chuyển", "Khó", "Nhẹ"}
+WORK_KINDS = {"PT", "PT_Atlas", "Atlas", "Ca làm", "Content", "Công việc", "Di chuyển", "Khó", "Nhẹ"}
 
 # Điểm phù hợp năng lượng cho từng loại việc: (tỉnh táo, bình thường, mệt)
 ENERGY_WEIGHT = {
@@ -92,6 +97,7 @@ ENERGY_WEIGHT = {
     "Nhẹ": (0.5, 2.0, 3.0),
     "Tập": (1.5, 2.0, 0.5),
     "Atlas": (3.0, 1.5, 0.5),
+    "Content": (2.5, 2.0, 0.5),
 }
 
 DEFAULT_SETTINGS = {
@@ -250,6 +256,33 @@ def pt_items(events: list[dict], d: date, commute: int, chain_gap: int | None = 
     return sorted(out, key=lambda it: (it.start, it.end))
 
 
+DEFAULT_WORK = {"shifts": [["07:00", "10:00"], ["17:00", "21:00"]], "off": []}  # giờ làm thường lệ của anh
+
+
+def work_plan_for(d: date, template: dict | None, week_rec: dict | None) -> list[tuple[int, int]]:
+    """Ca làm của 1 ngày. week_rec (lịch tuần đã lưu) ưu tiên hơn template (mặc định)."""
+    tpl = template or DEFAULT_WORK
+    rec = week_rec or {}
+    wd = str(d.weekday())
+    off = rec.get("off", tpl.get("off", []))
+    if d.weekday() in [int(x) for x in off]:
+        return []
+    shifts = (rec.get("days") or {}).get(wd) or (tpl.get("days") or {}).get(wd) or tpl.get("shifts") or DEFAULT_WORK["shifts"]
+    out = []
+    for a, b in shifts:
+        try:
+            s_, e_ = to_min(a), to_min(b)
+        except (ValueError, AttributeError):
+            continue
+        if e_ > s_:
+            out.append((s_, e_))
+    return out
+
+
+def shift_items(d: date, template: dict | None, week_rec: dict | None) -> list[Item]:
+    return [Item(s_, e_, "Giờ làm Atlas", "Ca làm", "shift") for s_, e_ in work_plan_for(d, template, week_rec)]
+
+
 def event_items(events: list[dict], d: date) -> list[Item]:
     ds = d.isoformat()
     out = []
@@ -279,14 +312,32 @@ def block_items(blocks: list[dict], d: date) -> list[Item]:
     return out
 
 
+def travel_items(items: list[Item], commute: int, chain_gap: int | None = None) -> list[Item]:
+    """Giờ đi lại trước/sau mỗi chuỗi việc phải ra ngoài (ca PT, giờ làm Atlas) nối liền nhau."""
+    if not commute:
+        return []
+    chain_gap = 2 * commute if chain_gap is None else chain_gap
+    spans = merge([(it.start, it.end) for it in items if it.kind in TRAVEL_KINDS])
+    joined: list[list[int]] = []
+    for s_, e_ in spans:
+        if joined and s_ - joined[-1][1] <= chain_gap:
+            joined[-1][1] = max(joined[-1][1], e_)
+        else:
+            joined.append([s_, e_])
+    out = []
+    for s_, e_ in joined:
+        out.append(Item(max(0, s_ - commute), s_, "Di chuyển", "Di chuyển", "travel"))
+        out.append(Item(e_, min(DAY, e_ + commute), "Di chuyển", "Di chuyển", "travel"))
+    return out
+
+
 def day_items(d: date, fixed, pt_events, events, blocks, settings: dict) -> list[Item]:
-    items = (
-        fixed_items(fixed, d)
-        + pt_items(pt_events, d, int(settings.get("commute_min", 15)), rules=settings.get("_rules"),
-                   pt_calendar=settings.get("pt_calendar", "PT"))
-        + event_items(events, d)
-        + block_items(blocks, d)
+    commute = int(settings.get("commute_min", 15))
+    out_items = (
+        pt_items(pt_events, d, 0, rules=settings.get("_rules"), pt_calendar=settings.get("pt_calendar", "PT"))
+        + shift_items(d, settings.get("_work_template"), (settings.get("_work_weeks") or {}).get(week_start(d).isoformat()))
     )
+    items = fixed_items(fixed, d) + out_items + travel_items(out_items, commute) + event_items(events, d) + block_items(blocks, d)
     return sorted(items, key=lambda it: (it.start, it.end))
 
 
@@ -395,7 +446,7 @@ def propose(
             return DAY
         return now.hour * 60 + now.minute
 
-    order = {"Khó": 0, "Học": 1, "Tập": 2, "Nhẹ": 3}
+    order = {"Khó": 0, "Atlas": 0, "Học": 1, "Content": 1, "Tập": 2, "Nhẹ": 3}
     todo = sorted(
         tasks,
         key=lambda t: (0 if t.get("date") else 1, order.get(t.get("kind"), 9), -int(t.get("minutes") or 0)),
@@ -443,7 +494,7 @@ def propose(
             deep_used[d] += dur
         en = energy_label(s, e, settings)
         note = ""
-        if kind in ("Khó", "Học") and en == "Mệt":
+        if kind in ("Khó", "Học", "Atlas", "Content") and en == "Mệt":
             note = "Chỉ còn giờ hay mệt — cân nhắc dời sang tuần sau"
         elif kind == "Nhẹ" and en == "Tỉnh táo":
             note = "Đang dùng giờ tỉnh táo cho việc nhẹ"
@@ -466,7 +517,7 @@ def analyze_week(days: list[date], items_by_day: dict[date, list[Item]], setting
         its = items_by_day.get(d, [])
         sleep = sum(it.minutes for it in its if it.kind == "Ngủ")
         has_sleep = has_sleep or sleep > 0
-        work = sum(it.minutes for it in its if it.kind in WORK_KINDS)
+        work = sum(e_ - s_ for s_, e_ in merge([(it.start, it.end) for it in its if it.kind in WORK_KINDS]))
         learn = sum(it.minutes for it in its if it.kind == "Học")
         pt = sum(it.minutes for it in its if it.kind in PT_KINDS)
         slots = free_slots([(it.start, it.end) for it in its], window, min_slot)
@@ -480,6 +531,8 @@ def analyze_week(days: list[date], items_by_day: dict[date, list[Item]], setting
         its = [it for it in items_by_day.get(p["date"], []) if it.kind != "Ngủ"]
         for i, a in enumerate(its):
             for b in its[i + 1:]:
+                if a.kind in OVERLAP_OK and b.kind in OVERLAP_OK:
+                    continue
                 if a.start < b.end and b.start < a.end:
                     clashes.append(f"{vn_date(p['date'])} {fmt(max(a.start, b.start))}: {a.title} ↔ {b.title}")
     if clashes:

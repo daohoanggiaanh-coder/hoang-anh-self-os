@@ -174,3 +174,44 @@ def test_classify_and_travel_only_for_pt_atlas():
     travel = [(S.fmt(i.start), S.fmt(i.end)) for i in its if i.source == "travel"]
     assert ("20:45", "21:00") not in travel and ("21:00", "21:15") not in travel  # đám cưới không cộng đi lại
     assert ("14:45", "15:00") in travel and ("19:00", "19:15") in travel
+
+
+def test_work_shifts_and_early_client_chain():
+    st = {**DEFAULT_SETTINGS, "_rules": None}
+    evs = [{"id": "x", "title": "H.Anh - Dũng 6h", "start": "2026-11-03T06:00", "end": "2026-11-03T07:00",
+            "cal": "atlas", "kind_override": "PT_Atlas"},
+           {"id": "y", "title": "H.Anh - Kiệt", "start": "2026-11-03T17:30", "end": "2026-11-03T18:30",
+            "cal": "atlas", "kind_override": "PT_Atlas"}]
+    d = date(2026, 11, 3)
+    its = S.day_items(d, [], evs, [], [], st)
+    shifts = [(S.fmt(i.start), S.fmt(i.end)) for i in its if i.kind == "Ca làm"]
+    assert shifts == [("07:00", "10:00"), ("17:00", "21:00")]
+    travel = sorted((S.fmt(i.start), S.fmt(i.end)) for i in its if i.kind == "Di chuyển")
+    # ca 6h nối liền giờ làm 7h → chỉ đi trước 5:45 và về lúc 10:00; chiều 16:45 và 21:00
+    assert travel == [("05:45", "06:00"), ("10:00", "10:15"), ("16:45", "17:00"), ("21:00", "21:15")]
+    res = S.analyze_week([d], {d: its}, st)
+    assert not res["clashes"]  # dạy trong giờ làm không phải trùng
+    assert res["per_day"][0]["work"] == 270 + 270  # 5:45–10:15 và 16:45–21:15 (gồm đi lại)
+
+
+def test_day_off_and_week_override():
+    tpl = {"shifts": [["07:00", "10:00"], ["17:00", "21:00"]], "off": [6]}
+    sun = date(2026, 11, 8)
+    assert S.work_plan_for(sun, tpl, None) == []
+    rec = {"off": [2], "days": {"0": [["08:00", "11:00"]]}}
+    assert S.work_plan_for(MON, tpl, rec) == [(480, 660)]
+    assert S.work_plan_for(date(2026, 11, 4), tpl, rec) == []        # T4 nghỉ tuần này
+    assert S.work_plan_for(sun, tpl, rec) == [(420, 600), (1020, 1260)]  # tuần này CN đi làm
+
+
+def test_routine_tasks_window_and_done():
+    from core.week import routine_tasks
+
+    days = S.week_days(MON)  # 02–08/11
+    r = [{"key": "v", "title": "Quay video", "kind": "Content", "minutes": 90, "per_week": 2, "start": "2026-11-09", "active": True},
+         {"key": "w", "title": "Dựng", "kind": "Content", "minutes": 60, "per_week": 2, "active": True}]
+    assert [t["title"] for t in routine_tasks(r, [], days)] == ["Dựng", "Dựng"]  # series chưa bắt đầu
+    nxt = S.week_days(date(2026, 11, 9))
+    blocks = [{"task_key": "routine:v:2026-11-09:0", "date": "2026-11-10"}]
+    got = routine_tasks(r, blocks, nxt)
+    assert sum(1 for t in got if t["title"] == "Quay video") == 1

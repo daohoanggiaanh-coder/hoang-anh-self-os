@@ -1,5 +1,13 @@
 # Nhật ký phiên bản
 
+## 0.4.0 — 05/11/2026
+- Lịch làm tuần: giờ làm thường lệ 7h–10h và 17h–21h (loại “Giờ làm Atlas” 🕘), bấm chọn ngày nghỉ cho từng tuần, lưu làm mặc định.
+- Ca khách sớm/muộn hơn giờ làm lấy từ Google Calendar, nối liền với giờ làm khi tính đi lại; dạy trong giờ làm không báo trùng.
+- ＋ Thêm việc 4 bước (Việc gì → Loại → Bao lâu → Khi nào), có tuỳ chọn lặp lại mỗi tuần; có ở trang Hôm nay và Lịch.
+- Việc lặp lại hằng tuần (bảng quản lý trong “Việc cần xếp”), tự đưa vào Đề xuất xếp lịch.
+- Loại mới 🎬 Quay / dựng video. Thêm sẵn series 84 ngày (09/11/2026–31/01/2027): quay 2 buổi × 90' và dựng 2 buổi × 60' mỗi tuần.
+- Giờ làm việc trong tuần tính theo hợp các khoảng (không cộng trùng).
+
 ## 0.3.0 — 03/11/2026
 - Phân loại & màu: 12 loại việc có màu + biểu tượng riêng (Dạy PT · Khách riêng, Dạy PT · Atlas, Quản lý Atlas, Học, Tự tập, Burpee…), chú thích màu.
 - Bản đồ màu cả tuần (5h–23h) + tổng giờ theo loại.

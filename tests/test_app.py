@@ -167,3 +167,27 @@ def test_cookie_restore_rejects_wrong_token():
     at.text_input(key="_ck").input("x" * 32).run()
     html = " ".join(h.proto.body for h in at.get("html"))
     assert "Hôm nay của tôi" not in html
+
+
+def test_quick_add_and_week_off(tmp_path):
+    from core.auth import remember_token
+    from core.store import LocalStore, latest
+
+    at = _app()
+    at.query_params["k"] = remember_token("pw")
+    at.run()
+    at.switch_page("views/schedule.py").run()
+    assert not at.exception, at.exception
+    # ＋ Thêm việc lặp lại
+    at.text_input(key="qa_t_sched").input("Quay video 84 ngày")
+    at.radio(key="qa_w_sched").set_value("Lặp lại mỗi tuần")
+    next(b for b in at.button if "Thêm việc" in b.label).click().run()
+    assert not at.exception, at.exception
+    titles = [r["title"] for r in latest(LocalStore(tmp_path).read("routines"))]
+    assert "Quay video 84 ngày" in titles
+    # chọn nghỉ Chủ nhật rồi lưu tuần
+    at.button_group(key=[k for k in at.session_state if str(k).startswith("off_")][0]).set_value([6]).run()
+    next(b for b in at.button if "Lưu lịch tuần này" in b.label).click().run()
+    assert not at.exception, at.exception
+    recs = latest(LocalStore(tmp_path).read("work_week"))
+    assert recs and recs[0]["off"] == [6]

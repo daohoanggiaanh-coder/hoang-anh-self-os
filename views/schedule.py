@@ -6,7 +6,8 @@ from core import db
 from core import scheduler as S
 from core import ui
 from core.editors import edit_table, from_date, from_time, to_date, to_time
-from core.week import load_week, skill_tasks
+from core.quick import quick_add, work_week_editor
+from core.week import load_week, routine_tasks, skill_tasks
 
 cc = st.column_config
 now = ui.now_vn()
@@ -40,9 +41,15 @@ wk = load_week(ref)
 if wk.pt_error:
     st.warning(f"Chưa đọc được lịch PT: {wk.pt_error}")
 
-tab_week, tab_prop, tab_tasks, tab_fixed, tab_events = st.tabs(
-    ["Tuần này", "Đề xuất xếp lịch", "Việc cần xếp", "Lịch cố định", "Việc phát sinh"]
+tab_week, tab_work, tab_add, tab_prop, tab_tasks, tab_fixed, tab_events = st.tabs(
+    ["Tuần này", "🗓 Lịch làm tuần", "＋ Thêm việc", "Đề xuất xếp lịch", "Việc cần xếp", "Lịch cố định", "Việc phát sinh"]
 )
+
+with tab_work:
+    work_week_editor(days)
+
+with tab_add:
+    quick_add("sched", now.date())
 
 # ------------------------------------------------------------- Tuần này
 with tab_week:
@@ -115,13 +122,16 @@ with tab_prop:
     )
     with_skills = st.toggle("Tự chèn giờ học kỹ năng còn thiếu trong tuần", value=True)
     sk_tasks = skill_tasks(db.skills(), wk.blocks, db.table("learn_log"), days) if with_skills else []
+    rt_tasks = routine_tasks(db.routines(), wk.blocks, days)
+    if rt_tasks:
+        st.caption("Việc lặp hằng tuần còn thiếu: " + ", ".join(sorted({f"{ui.KIND_ICON.get(t['kind'], '')} {t['title']}" for t in rt_tasks})))
     if sk_tasks:
         st.caption(f"Giờ học còn thiếu tuần này: {len(sk_tasks)} buổi · {S.fmt_dur(sum(t['minutes'] for t in sk_tasks))}")
-    if st.button("✦ Tạo đề xuất cho tuần", type="primary", disabled=not (pending or sk_tasks)):
-        props, unplaced = S.propose(days, wk.items, pending + sk_tasks, wk.settings, now=now)
+    if st.button("✦ Tạo đề xuất cho tuần", type="primary", disabled=not (pending or sk_tasks or rt_tasks)):
+        props, unplaced = S.propose(days, wk.items, pending + rt_tasks + sk_tasks, wk.settings, now=now)
         st.session_state[_proposals_key()] = {"props": [p.to_dict() for p in props], "unplaced": unplaced}
         st.rerun()
-    if not pending and not sk_tasks:
+    if not pending and not sk_tasks and not rt_tasks:
         st.info("Chưa có việc nào chờ xếp. Anh thêm việc ở tab **Việc cần xếp** hoặc đặt giờ học ở trang **Kỹ năng**.")
 
     data = st.session_state.get(_proposals_key())
@@ -203,7 +213,7 @@ with tab_tasks:
         wk.tasks,
         {
             "title": (cc.TextColumn("Việc", required=True, width="large"), ident, lambda v: (str(v).strip() or None) if v is not None else None),
-            "kind": (cc.SelectboxColumn("Loại", options=S.TASK_KINDS, required=True), ident, ident),
+            "kind": (cc.SelectboxColumn("Loại", options=S.TASK_KINDS, required=True, format_func=lambda k: f"{ui.KIND_ICON[k]} {ui.KIND_LABEL[k]}"), ident, ident),
             "minutes": (cc.NumberColumn("Phút", min_value=15, max_value=480, step=15, required=True), ident,
                         lambda v: int(v) if v is not None and v == v else None),
             "date": (cc.DateColumn("Ngày (tuỳ chọn)", format="DD/MM/YYYY"), to_date, from_date),
@@ -212,6 +222,24 @@ with tab_tasks:
         required=["title", "kind", "minutes"],
         widget_key="ed_tasks",
         defaults={"status": "Chờ xếp"},
+    )
+
+    st.markdown("##### 🔁 Việc lặp lại mỗi tuần")
+    st.caption("Mỗi tuần web tự tạo đủ số buổi để đề xuất xếp giờ. Tắt “Đang dùng” để tạm dừng.")
+    edit_table(
+        "routines", db.routines(),
+        {
+            "title": (cc.TextColumn("Việc", required=True, width="large"), ident, lambda v: (str(v).strip() or None) if v is not None else None),
+            "kind": (cc.SelectboxColumn("Loại", options=S.TASK_KINDS, required=True, format_func=lambda k: f"{ui.KIND_ICON[k]} {ui.KIND_LABEL[k]}"), ident, ident),
+            "minutes": (cc.NumberColumn("Phút/buổi", min_value=15, max_value=480, step=15, required=True), ident,
+                        lambda v: int(v) if v is not None and v == v else None),
+            "per_week": (cc.NumberColumn("Buổi/tuần", min_value=1, max_value=7, step=1, required=True), ident,
+                         lambda v: int(v) if v is not None and v == v else 1),
+            "start": (cc.DateColumn("Từ ngày", format="DD/MM/YYYY"), to_date, from_date),
+            "end": (cc.DateColumn("Đến ngày", format="DD/MM/YYYY"), to_date, from_date),
+            "active": (cc.CheckboxColumn("Đang dùng"), lambda v: v if v is not None else True, lambda v: bool(v)),
+        },
+        required=["title", "kind", "minutes"], widget_key="ed_routines", defaults={"active": True, "per_week": 1},
     )
 
 # ------------------------------------------------------------- Lịch cố định

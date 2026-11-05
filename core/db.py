@@ -46,7 +46,7 @@ def is_local() -> bool:
 TABLES = [
     "settings", "fixed", "events", "blocks", "tasks", "daily", "habits", "habit_log", "skills", "learn_log",
     "body", "look_items", "look_log", "photos", "wardrobe", "studio_tasks", "studio_budget", "studio_monthly", "goals",
-    "cal_rules",
+    "cal_rules", "work_week", "routines",
 ]
 LIGHT_TABLES = [t for t in TABLES if t != "photos"]  # ảnh nặng → chỉ tải khi mở trang Vẻ ngoài
 
@@ -255,3 +255,34 @@ def cal_rules() -> list[dict]:
 
     _seed_once("rules", "cal_rules", [dict(r) for r in DEFAULT_RULES])
     return sorted(table("cal_rules"), key=lambda r: r.get("order", 99))
+
+
+# ------------------------------------------------------------- lịch làm tuần
+def work_template() -> dict:
+    from core.scheduler import DEFAULT_WORK
+
+    rec = next((r for r in table("settings") if r["key"] == "work_template"), None)
+    return {k: v for k, v in (rec or DEFAULT_WORK).items() if k != "key"}
+
+
+def save_work_template(tpl: dict):
+    put("settings", [{**tpl, "key": "work_template"}])
+
+
+def work_weeks() -> dict:
+    return {r["key"]: r for r in table("work_week")}
+
+
+# ------------------------------------------------------------- việc lặp lại hằng tuần
+SERIES_84 = [
+    {"title": "Quay video series 84 ngày giảm cân – giảm mỡ", "kind": "Content", "minutes": 90, "per_week": 2,
+     "start": "2026-11-09", "end": "2027-01-31", "active": True,
+     "note": "Quay dồn đủ nguyên liệu cho 7 video/tuần (B-roll + lồng tiếng)"},
+    {"title": "Dựng & lên lịch đăng video 84 ngày", "kind": "Content", "minutes": 60, "per_week": 2,
+     "start": "2026-11-09", "end": "2027-01-31", "active": True, "note": "Dựng, viết caption, hẹn giờ đăng"},
+]
+
+
+def routines() -> list[dict]:
+    _seed_once("series84", "routines", [dict(r) for r in SERIES_84])
+    return table("routines")

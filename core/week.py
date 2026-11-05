@@ -45,9 +45,30 @@ def skill_tasks(skills: list[dict], blocks: list[dict], learn_log: list[dict], d
     return out
 
 
+def routine_tasks(routines: list[dict], blocks: list[dict], days: list[date]) -> list[dict]:
+    """Việc lặp hằng tuần → các buổi còn thiếu trong tuần (trừ buổi đã nhận lịch)."""
+    lo, hi = days[0].isoformat(), days[-1].isoformat()
+    out = []
+    for r in routines:
+        if not r.get("active", True):
+            continue
+        if r.get("start") and str(r["start"])[:10] > hi:
+            continue
+        if r.get("end") and str(r["end"])[:10] < lo:
+            continue
+        n = int(r.get("per_week") or 0)
+        done = sum(1 for b in blocks if str(b.get("task_key", "")).startswith(f"routine:{r['key']}:{lo}"))
+        for i in range(done, n):
+            out.append({"key": f"routine:{r['key']}:{lo}:{i}", "title": r.get("title", ""), "kind": r.get("kind", "Khó"),
+                        "minutes": int(r.get("minutes") or 60), "status": "Chờ xếp"})
+    return out
+
+
 def load_week(ref: date) -> Week:
     st_ = db.settings()
     st_["_rules"] = db.cal_rules()
+    st_["_work_template"] = db.work_template()
+    st_["_work_weeks"] = db.work_weeks()
     days = S.week_days(ref)
     fixed = db.fixed_schedule()
     events = db.table("events")

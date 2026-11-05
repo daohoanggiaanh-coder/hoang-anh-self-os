@@ -158,6 +158,11 @@ with right:
                 st.session_state["_flash"] = "Đã lưu tổng kết. Nghỉ ngơi tốt nhé anh."
                 st.rerun()
 
+with st.expander("＋ Thêm việc", expanded=False):
+    from core.quick import quick_add
+
+    quick_add("today", today)
+
 if wk.analysis["warnings"]:
     with st.expander("Nhắc nhẹ về lịch tuần này"):
         ui.warnings(wk.analysis["warnings"])
